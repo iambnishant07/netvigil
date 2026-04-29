@@ -1,0 +1,730 @@
+openapi: 3.1.0
+
+info:
+  title: NetVigil API
+  version: 0.1.0
+  description: |
+    NetVigil is an AI-driven Network Detection and Response platform for SMBs.
+    This document is the single source of truth for the contract between the
+    FastAPI backend (`services/api`) and the TypeScript clients
+    (`packages/web`, `packages/mobile`). Generated TypeScript types live in
+    `packages/shared-types/src/openapi.d.ts` and must not be edited by hand.
+
+    Authentication: bearer JWT (RS256), 15-minute access tokens with refresh
+    rotation. All tenant-scoped endpoints require the bearer token.
+  contact:
+    name: NIT3003 Capstone Team
+  license:
+    name: Educational use — Victoria University
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local dev (docker-compose)
+  - url: https://staging.netvigil.example/api/v1
+    description: Staging (AWS ECS)
+
+tags:
+  - name: auth
+    description: Authentication, registration, token refresh
+  - name: devices
+    description: Network log source registration and management
+  - name: incidents
+    description: Detected threats, triage, and acknowledgement
+  - name: alert-rules
+    description: Configurable alert routing
+  - name: dashboard
+    description: KPI tiles, threat-map data, real-time feed
+  - name: admin
+    description: Organisation, user, and role management
+  - name: health
+    description: Liveness and readiness probes
+
+paths:
+
+  # ─── Health ──────────────────────────────────────────────────────────────
+  /healthz:
+    get:
+      tags: [health]
+      summary: Liveness probe
+      security: []
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok] }
+                  version: { type: string }
+
+  # ─── Auth (FR-01, FR-08) ─────────────────────────────────────────────────
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Register a new organisation and admin user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Exchange credentials for access + refresh tokens
+      description: |
+        Returns 401 with a generic message on any auth failure. Never
+        reveals whether the user exists.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Rotate refresh token, return new access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: The authenticated user's profile
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ─── Devices (FR-02, FR-09) ──────────────────────────────────────────────
+  /devices:
+    get:
+      tags: [devices]
+      summary: List registered log sources
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceList' }
+    post:
+      tags: [devices]
+      summary: Register a new log source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceCreate' }
+      responses:
+        '201':
+          description: |
+            Returns the device record plus the one-time shared secret used
+            by the device to authenticate to the ingestor. The secret is
+            shown only once and never returned by GET.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Device'
+                  - type: object
+                    required: [sharedSecret]
+                    properties:
+                      sharedSecret: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /devices/{deviceId}:
+    parameters:
+      - $ref: '#/components/parameters/DeviceIdParam'
+    get:
+      tags: [devices]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [devices]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceUpdate' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [devices]
+      responses:
+        '204': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ─── Incidents (FR-04, FR-06, FR-12, FR-13) ──────────────────────────────
+  /incidents:
+    get:
+      tags: [incidents]
+      summary: List incidents with filters
+      parameters:
+        - in: query
+          name: severity
+          schema: { $ref: '#/components/schemas/Severity' }
+        - in: query
+          name: status
+          schema: { $ref: '#/components/schemas/IncidentStatus' }
+        - in: query
+          name: deviceId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentList' }
+
+  /incidents/{incidentId}:
+    parameters:
+      - $ref: '#/components/parameters/IncidentIdParam'
+    get:
+      tags: [incidents]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Incident' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [incidents]
+      summary: Update incident status (acknowledge, confirm, false positive)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/IncidentStatus' }
+                note:
+                  type: string
+                  maxLength: 1000
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Incident' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ─── Real-time feed ──────────────────────────────────────────────────────
+  /incidents/stream:
+    get:
+      tags: [incidents]
+      summary: WebSocket feed of new and updated incidents
+      description: |
+        Upgrades the connection to a WebSocket. The client receives
+        `IncidentEvent` messages until disconnected. Falls back gracefully
+        to 30-second polling on `/incidents` when the WebSocket fails.
+      responses:
+        '101':
+          description: Switching Protocols (WebSocket)
+
+  # ─── Dashboard (FR-03, FR-05) ────────────────────────────────────────────
+  /dashboard/kpis:
+    get:
+      tags: [dashboard]
+      summary: KPI tile data for the dashboard
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardKpis' }
+
+  /dashboard/threat-map:
+    get:
+      tags: [dashboard]
+      summary: Geo-IP arc data for the threat map
+      parameters:
+        - in: query
+          name: hours
+          schema: { type: integer, minimum: 1, maximum: 168, default: 24 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [center, arcs]
+                properties:
+                  center:
+                    $ref: '#/components/schemas/GeoPoint'
+                  arcs:
+                    type: array
+                    items: { $ref: '#/components/schemas/ThreatArc' }
+
+  # ─── Alert rules (FR-07, FR-14) ──────────────────────────────────────────
+  /alert-rules:
+    get:
+      tags: [alert-rules]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AlertRule' }
+    post:
+      tags: [alert-rules]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AlertRuleCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AlertRule' }
+
+  /alert-rules/{ruleId}:
+    parameters:
+      - in: path
+        name: ruleId
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [alert-rules]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AlertRuleUpdate' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AlertRule' }
+    delete:
+      tags: [alert-rules]
+      responses:
+        '204': { description: Deleted }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageParam:
+      in: query
+      name: page
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSizeParam:
+      in: query
+      name: pageSize
+      schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+    DeviceIdParam:
+      in: path
+      name: deviceId
+      required: true
+      schema: { type: string, format: uuid }
+    IncidentIdParam:
+      in: path
+      name: incidentId
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    BadRequest:
+      description: Validation failure
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Invalid or missing credentials
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: invalid_credentials }
+        message: { type: string }
+        details:
+          type: object
+          additionalProperties: true
+
+    # ─── Auth ────────────────────────────────────────────────────────────
+    RegisterRequest:
+      type: object
+      required: [organizationName, email, password, timezone]
+      properties:
+        organizationName: { type: string, minLength: 2, maxLength: 200 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 12 }
+        timezone: { type: string, example: Australia/Brisbane }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+
+    AuthResponse:
+      type: object
+      required: [accessToken, refreshToken, expiresIn, user]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        expiresIn:
+          type: integer
+          description: Seconds until access token expires
+          example: 900
+        user: { $ref: '#/components/schemas/User' }
+
+    User:
+      type: object
+      required: [id, organizationId, email, role, mfaEnrolled, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        email: { type: string, format: email }
+        role: { type: string, enum: [admin, analyst, viewer] }
+        mfaEnrolled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    # ─── Devices ─────────────────────────────────────────────────────────
+    DeviceVendor:
+      type: string
+      enum: [pfsense, opnsense, mikrotik, fortigate, generic_syslog]
+
+    DeviceProtocol:
+      type: string
+      enum: [syslog, netflow, pcap]
+
+    Device:
+      type: object
+      required: [id, organizationId, name, vendor, protocol, publicIp, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        vendor: { $ref: '#/components/schemas/DeviceVendor' }
+        protocol: { $ref: '#/components/schemas/DeviceProtocol' }
+        publicIp: { type: string, format: ipv4 }
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+        lastSeenAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt: { type: string, format: date-time }
+
+    DeviceCreate:
+      type: object
+      required: [name, vendor, protocol, publicIp]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        vendor: { $ref: '#/components/schemas/DeviceVendor' }
+        protocol: { $ref: '#/components/schemas/DeviceProtocol' }
+        publicIp: { type: string, format: ipv4 }
+        location: { $ref: '#/components/schemas/GeoPoint' }
+
+    DeviceUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        location: { $ref: '#/components/schemas/GeoPoint' }
+
+    DeviceList:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Device' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+
+    # ─── Incidents ───────────────────────────────────────────────────────
+    Severity:
+      type: string
+      enum: [info, low, medium, high, critical]
+
+    IncidentStatus:
+      type: string
+      enum: [open, acknowledged, confirmed, false_positive]
+
+    AttackLabel:
+      type: string
+      enum:
+        - port_scan
+        - ddos
+        - brute_force
+        - c2_beaconing
+        - data_exfil
+        - lateral_movement
+        - unknown_anomaly
+
+    Incident:
+      type: object
+      required:
+        - id
+        - organizationId
+        - deviceId
+        - detectedAt
+        - severity
+        - status
+        - attackLabel
+        - mitreTechnique
+        - sourceIp
+        - destinationIp
+        - anomalyScore
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        deviceId: { type: string, format: uuid }
+        detectedAt: { type: string, format: date-time }
+        severity: { $ref: '#/components/schemas/Severity' }
+        status: { $ref: '#/components/schemas/IncidentStatus' }
+        attackLabel: { $ref: '#/components/schemas/AttackLabel' }
+        mitreTechnique:
+          type: string
+          pattern: '^T[0-9]{4}(\.[0-9]{3})?$'
+          example: T1046
+        sourceIp: { type: string }
+        destinationIp: { type: string }
+        anomalyScore:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        narrative:
+          type: string
+          maxLength: 1200
+          nullable: true
+          description: Plain-English summary, LLM-generated, with template fallback.
+        topFeatures:
+          type: array
+          maxItems: 3
+          items:
+            type: object
+            required: [name, value]
+            properties:
+              name: { type: string }
+              value: { type: number }
+
+    IncidentList:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Incident' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+
+    IncidentEvent:
+      type: object
+      required: [type, incident]
+      properties:
+        type:
+          type: string
+          enum: [created, updated]
+        incident: { $ref: '#/components/schemas/Incident' }
+
+    # ─── Dashboard ───────────────────────────────────────────────────────
+    DashboardKpis:
+      type: object
+      required:
+        - eventsPerSecond
+        - openIncidentsBySeverity
+        - topInternalTalkers
+        - topExternalDestinations
+      properties:
+        eventsPerSecond: { type: number }
+        openIncidentsBySeverity:
+          type: object
+          required: [info, low, medium, high, critical]
+          properties:
+            info: { type: integer }
+            low: { type: integer }
+            medium: { type: integer }
+            high: { type: integer }
+            critical: { type: integer }
+        topInternalTalkers:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            required: [ip, bytes]
+            properties:
+              ip: { type: string }
+              bytes: { type: integer, format: int64 }
+        topExternalDestinations:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            required: [ip, country, bytes]
+            properties:
+              ip: { type: string }
+              country: { type: string, minLength: 2, maxLength: 2 }
+              bytes: { type: integer, format: int64 }
+
+    GeoPoint:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+
+    ThreatArc:
+      type: object
+      required: [from, to, count, severity]
+      properties:
+        from: { $ref: '#/components/schemas/GeoPoint' }
+        to: { $ref: '#/components/schemas/GeoPoint' }
+        count: { type: integer, minimum: 1 }
+        severity: { $ref: '#/components/schemas/Severity' }
+        sourceCountry:
+          type: string
+          minLength: 2
+          maxLength: 2
+
+    # ─── Alert rules ─────────────────────────────────────────────────────
+    AlertChannel:
+      type: string
+      enum: [email, sms, push]
+
+    AlertRule:
+      type: object
+      required:
+        - id
+        - organizationId
+        - name
+        - minSeverity
+        - channel
+        - enabled
+        - createdAt
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        minSeverity: { $ref: '#/components/schemas/Severity' }
+        mitreFilter:
+          type: array
+          items:
+            type: string
+            pattern: '^T[0-9]{4}(\.[0-9]{3})?$'
+        channel: { $ref: '#/components/schemas/AlertChannel' }
+        targetUserId:
+          type: string
+          format: uuid
+          nullable: true
+        enabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    AlertRuleCreate:
+      type: object
+      required: [name, minSeverity, channel]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        minSeverity: { $ref: '#/components/schemas/Severity' }
+        mitreFilter:
+          type: array
+          items: { type: string }
+        channel: { $ref: '#/components/schemas/AlertChannel' }
+        targetUserId: { type: string, format: uuid }
+        enabled: { type: boolean, default: true }
+
+    AlertRuleUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        minSeverity: { $ref: '#/components/schemas/Severity' }
+        mitreFilter:
+          type: array
+          items: { type: string }
+        channel: { $ref: '#/components/schemas/AlertChannel' }
+        targetUserId: { type: string, format: uuid }
+        enabled: { type: boolean }
+
+security:
+  - bearerAuth: []

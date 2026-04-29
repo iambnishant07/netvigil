@@ -1,0 +1,21 @@
+{
+  "name": "netvigil",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "test": "pnpm -r test --if-present",
+    "generate:types": "openapi-typescript docs/openapi.yaml -o packages/shared-types/src/openapi.d.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "openapi-typescript": "^7.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}
