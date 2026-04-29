@@ -1,0 +1,31 @@
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import AuthGuard from './components/layout/AuthGuard.tsx';
+import AppShell from './components/layout/AppShell.tsx';
+import LoginPage from './pages/LoginPage.tsx';
+import RegisterPage from './pages/RegisterPage.tsx';
+import DashboardPage from './pages/DashboardPage.tsx';
+import IncidentsPage from './pages/IncidentsPage.tsx';
+import IncidentDetailPage from './pages/IncidentDetailPage.tsx';
+import DevicesPage from './pages/DevicesPage.tsx';
+import AlertRulesPage from './pages/AlertRulesPage.tsx';
+
+export const router = createBrowserRouter([
+  { path: '/login',    element: <LoginPage /> },
+  { path: '/register', element: <RegisterPage /> },
+  {
+    element: <AuthGuard />,
+    children: [
+      {
+        element: <AppShell />,
+        children: [
+          { index: true, element: <Navigate to="/dashboard" replace /> },
+          { path: '/dashboard',        element: <DashboardPage /> },
+          { path: '/incidents',        element: <IncidentsPage /> },
+          { path: '/incidents/:id',    element: <IncidentDetailPage /> },
+          { path: '/devices',          element: <DevicesPage /> },
+          { path: '/alert-rules',      element: <AlertRulesPage /> },
+        ],
+      },
+    ],
+  },
+]);

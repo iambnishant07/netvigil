@@ -1,21 +1,24 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App.tsx';
 import './index.css';
 
-const queryClient = new QueryClient();
+async function prepare(): Promise<void> {
+  if (import.meta.env.DEV) {
+    const { worker } = await import('./mocks/browser.ts');
+    await worker.start({ onUnhandledRequest: 'bypass' });
+  }
+}
 
 const rootEl = document.getElementById('root');
-if (!rootEl) throw new Error('Root element #root not found');
+if (rootEl === null) throw new Error('Root element #root not found');
 
-createRoot(rootEl).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+prepare()
+  .then(() => {
+    createRoot(rootEl).render(
+      <StrictMode>
         <App />
-      </BrowserRouter>
-    </QueryClientProvider>
-  </StrictMode>,
-);
+      </StrictMode>,
+    );
+  })
+  .catch((err: unknown) => console.error(err));
