@@ -1,7 +1,6 @@
 """Test fixtures — requires postgres running (docker compose up -d postgres)."""
 from __future__ import annotations
 
-import asyncio
 import os
 
 import asyncpg
@@ -47,6 +46,7 @@ os.environ["JWT_PUBLIC_KEY"]  = _REAL_PUB.replace("\n",  "\\n")
 # Re-import settings after env override
 import importlib
 import netvigil_api.config as _cfg_mod
+import netvigil_api.database as _db_mod
 import netvigil_api.security as _sec_mod
 _cfg_mod.settings = _cfg_mod.Settings()
 importlib.reload(_sec_mod)
@@ -64,17 +64,12 @@ DB_URL = (
 
 
 @pytest.fixture(scope="session")
-def event_loop():  # type: ignore[misc]
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest.fixture(scope="session")
 async def pg_pool() -> asyncpg.Pool:  # type: ignore[type-arg]
     pool = await asyncpg.create_pool(DB_URL)
+    _db_mod._pool = pool  # wire the app module so endpoints can use it without lifespan
     yield pool  # type: ignore[misc]
     await pool.close()
+    _db_mod._pool = None
 
 
 @pytest.fixture(autouse=True)

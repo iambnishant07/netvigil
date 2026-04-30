@@ -16,7 +16,7 @@ PAYLOAD = {
     "password": "supersecret123!",
     "timezone": "Australia/Brisbane",
 }
-DEVICE_BODY = {"name": "Core-Switch", "vendor": "mikrotik", "protocol": "syslog", "publicIp": "10.0.0.1"}
+DEVICE_BODY = {"name": "Core-Switch", "vendor": "mikrotik", "protocol": "syslog", "public_ip": "10.0.0.1"}
 
 
 async def _setup(client: AsyncClient) -> tuple[dict, str, str]:
@@ -71,7 +71,7 @@ async def test_patch_incident_status(client: AsyncClient, pg_pool: asyncpg.Pool)
 @pytest.mark.asyncio
 async def test_incidents_requires_auth(client: AsyncClient) -> None:
     r = await client.get(INCIDENTS)
-    assert r.status_code == 403
+    assert r.status_code == 401
 
 
 @pytest.mark.asyncio

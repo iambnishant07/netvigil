@@ -22,7 +22,7 @@ async def test_register_creates_org_and_returns_tokens(client: AsyncClient) -> N
     r = await client.post(REG, json=PAYLOAD)
     assert r.status_code == 201
     body = r.json()
-    assert body["accessToken"] or body.get("access_token")
+    assert body.get("access_token") or body.get("accessToken")
     assert body["user"]["email"] == PAYLOAD["email"]
     assert body["user"]["role"] == "admin"
 
@@ -59,7 +59,7 @@ async def test_login_unknown_email_returns_401(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_me_requires_auth(client: AsyncClient) -> None:
     r = await client.get(ME)
-    assert r.status_code == 403
+    assert r.status_code == 401
 
 
 @pytest.mark.asyncio

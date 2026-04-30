@@ -11,8 +11,9 @@ def _row_to_dict(row: asyncpg.Record) -> dict:  # type: ignore[type-arg]
     lng = d.pop("location_lng", None)
     d["location"] = {"lat": lat, "lng": lng} if lat is not None else None
     d.pop("shared_secret_hash", None)
-    for k in ("id", "organization_id"):
-        d[k] = str(d[k])
+    for k in ("id", "organization_id", "public_ip"):
+        if d.get(k) is not None:
+            d[k] = str(d[k])
     if d.get("last_seen_at"):
         d["last_seen_at"] = d["last_seen_at"].isoformat()
     if d.get("created_at"):

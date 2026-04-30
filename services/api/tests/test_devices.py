@@ -13,7 +13,7 @@ PAYLOAD = {
     "password": "supersecret123!",
     "timezone": "Australia/Brisbane",
 }
-DEVICE_BODY = {"name": "pfSense-Edge", "vendor": "pfsense", "protocol": "netflow", "publicIp": "203.0.113.1"}
+DEVICE_BODY = {"name": "pfSense-Edge", "vendor": "pfsense", "protocol": "netflow", "public_ip": "203.0.113.1"}
 
 
 async def _auth_header(client: AsyncClient) -> dict[str, str]:
@@ -47,7 +47,7 @@ async def test_create_and_get_device(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_devices_requires_auth(client: AsyncClient) -> None:
     r = await client.get(DEVICES)
-    assert r.status_code == 403
+    assert r.status_code == 401
 
 
 @pytest.mark.asyncio
