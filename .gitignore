@@ -39,3 +39,6 @@ Thumbs.db
 .vscode/settings.json
 .idea/
 *.swp
+
+# Claude Code
+.claude/
