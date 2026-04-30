@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from netvigil_api.schemas.base import CamelModel
 
 
-class TopFeature(BaseModel):
+class TopFeature(CamelModel):
     name: str
     value: float
 
 
-class IncidentOut(BaseModel):
+class IncidentOut(CamelModel):
     id: str
     organization_id: str
     device_id: str
@@ -24,13 +24,13 @@ class IncidentOut(BaseModel):
     top_features: list[TopFeature]
 
 
-class IncidentList(BaseModel):
+class IncidentList(CamelModel):
     items: list[IncidentOut]
     page: int
     page_size: int
     total: int
 
 
-class IncidentPatch(BaseModel):
+class IncidentPatch(CamelModel):
     status: str
     note: str | None = None

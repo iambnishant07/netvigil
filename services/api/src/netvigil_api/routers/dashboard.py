@@ -10,7 +10,7 @@ from netvigil_api.schemas.dashboard import DashboardKpis, GeoPoint, IpBytes, IpB
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
-@router.get("/kpis", response_model=DashboardKpis)
+@router.get("/kpis", response_model=DashboardKpis, response_model_by_alias=True)
 async def get_kpis(current_user: CurrentUser) -> DashboardKpis:
     async with db.get_connection() as conn:
         counts = await inc_repo.get_kpis(conn, current_user["org"])
@@ -23,7 +23,7 @@ async def get_kpis(current_user: CurrentUser) -> DashboardKpis:
     )
 
 
-@router.get("/threat-map", response_model=ThreatMap)
+@router.get("/threat-map", response_model=ThreatMap, response_model_by_alias=True)
 async def get_threat_map(
     current_user: CurrentUser,
     hours: int = Query(default=24, ge=1, le=168),

@@ -22,7 +22,7 @@ DEVICE_BODY = {"name": "Core-Switch", "vendor": "mikrotik", "protocol": "syslog"
 async def _setup(client: AsyncClient) -> tuple[dict, str, str]:
     r = await client.post(REG, json=PAYLOAD)
     token = r.json().get("access_token") or r.json().get("accessToken")
-    org_id = r.json()["user"]["organization_id"]
+    org_id = r.json()["user"]["organizationId"]
     headers = {"Authorization": f"Bearer {token}"}
     dr = await client.post("/api/v1/devices", json=DEVICE_BODY, headers=headers)
     device_id = dr.json()["id"]

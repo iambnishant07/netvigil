@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from netvigil_api.schemas.base import CamelModel
 
 
-class SeverityCount(BaseModel):
+class SeverityCount(CamelModel):
     info: int
     low: int
     medium: int
@@ -11,39 +11,37 @@ class SeverityCount(BaseModel):
     critical: int
 
 
-class IpBytes(BaseModel):
+class IpBytes(CamelModel):
     ip: str
     bytes: int
 
 
-class IpBytesCountry(BaseModel):
+class IpBytesCountry(CamelModel):
     ip: str
     country: str
     bytes: int
 
 
-class DashboardKpis(BaseModel):
+class DashboardKpis(CamelModel):
     events_per_second: float
     open_incidents_by_severity: SeverityCount
     top_internal_talkers: list[IpBytes]
     top_external_destinations: list[IpBytesCountry]
 
 
-class GeoPoint(BaseModel):
+class GeoPoint(CamelModel):
     lat: float
     lng: float
 
 
-class ThreatArc(BaseModel):
+class ThreatArc(CamelModel):
     from_: GeoPoint
     to: GeoPoint
     count: int
     severity: str
     source_country: str | None = None
 
-    model_config = {"populate_by_name": True}
 
-
-class ThreatMap(BaseModel):
+class ThreatMap(CamelModel):
     center: GeoPoint
     arcs: list[ThreatArc]

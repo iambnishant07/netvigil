@@ -10,14 +10,14 @@ from netvigil_api.schemas.alert_rules import AlertRuleCreate, AlertRuleOut, Aler
 router = APIRouter(prefix="/alert-rules", tags=["alert-rules"])
 
 
-@router.get("", response_model=list[AlertRuleOut])
+@router.get("", response_model=list[AlertRuleOut], response_model_by_alias=True)
 async def list_alert_rules(current_user: CurrentUser) -> list[AlertRuleOut]:
     async with db.get_connection() as conn:
         rules = await ar_repo.list_alert_rules(conn, current_user["org"])
     return [AlertRuleOut(**r) for r in rules]
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, response_model=AlertRuleOut)
+@router.post("", status_code=status.HTTP_201_CREATED, response_model=AlertRuleOut, response_model_by_alias=True)
 async def create_alert_rule(body: AlertRuleCreate, current_user: CurrentUser) -> AlertRuleOut:
     async with db.get_connection() as conn:
         rule = await ar_repo.create_alert_rule(
@@ -27,7 +27,7 @@ async def create_alert_rule(body: AlertRuleCreate, current_user: CurrentUser) ->
     return AlertRuleOut(**rule)
 
 
-@router.patch("/{rule_id}", response_model=AlertRuleOut)
+@router.patch("/{rule_id}", response_model=AlertRuleOut, response_model_by_alias=True)
 async def patch_alert_rule(rule_id: str, body: AlertRuleUpdate, current_user: CurrentUser) -> AlertRuleOut:
     async with db.get_connection() as conn:
         rule = await ar_repo.patch_alert_rule(

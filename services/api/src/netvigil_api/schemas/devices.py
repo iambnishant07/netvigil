@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from netvigil_api.schemas.base import CamelModel
 
 
-class GeoPoint(BaseModel):
+class GeoPoint(CamelModel):
     lat: float
     lng: float
 
 
-class DeviceCreate(BaseModel):
+class DeviceCreate(CamelModel):
     name: str
     vendor: str
     protocol: str
@@ -16,12 +16,12 @@ class DeviceCreate(BaseModel):
     location: GeoPoint | None = None
 
 
-class DeviceUpdate(BaseModel):
+class DeviceUpdate(CamelModel):
     name: str | None = None
     location: GeoPoint | None = None
 
 
-class DeviceOut(BaseModel):
+class DeviceOut(CamelModel):
     id: str
     organization_id: str
     name: str
@@ -37,7 +37,7 @@ class DeviceCreatedOut(DeviceOut):
     shared_secret: str
 
 
-class DeviceList(BaseModel):
+class DeviceList(CamelModel):
     items: list[DeviceOut]
     page: int
     page_size: int

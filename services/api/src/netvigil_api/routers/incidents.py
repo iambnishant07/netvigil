@@ -15,7 +15,7 @@ from netvigil_api.schemas.incidents import IncidentList, IncidentOut, IncidentPa
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
 
-@router.get("", response_model=IncidentList)
+@router.get("", response_model=IncidentList, response_model_by_alias=True)
 async def list_incidents(
     current_user: CurrentUser,
     severity: str | None = Query(default=None),
@@ -58,7 +58,7 @@ async def incident_stream(websocket: WebSocket) -> None:
         await conn.close()
 
 
-@router.get("/{incident_id}", response_model=IncidentOut)
+@router.get("/{incident_id}", response_model=IncidentOut, response_model_by_alias=True)
 async def get_incident(incident_id: str, current_user: CurrentUser) -> IncidentOut:
     async with db.get_connection() as conn:
         incident = await inc_repo.get_incident(conn, current_user["org"], incident_id)
@@ -67,7 +67,7 @@ async def get_incident(incident_id: str, current_user: CurrentUser) -> IncidentO
     return IncidentOut(**incident)
 
 
-@router.patch("/{incident_id}", response_model=IncidentOut)
+@router.patch("/{incident_id}", response_model=IncidentOut, response_model_by_alias=True)
 async def patch_incident(
     incident_id: str, body: IncidentPatch, current_user: CurrentUser
 ) -> IncidentOut:

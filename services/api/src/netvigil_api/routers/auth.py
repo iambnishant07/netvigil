@@ -23,7 +23,7 @@ _INVALID = HTTPException(
 )
 
 
-def _user_out(u: dict) -> UserOut:
+def _user_out(u: dict) -> UserOut:  # type: ignore[type-arg]
     return UserOut(
         id=str(u["id"]),
         organization_id=str(u["organization_id"]),
@@ -34,7 +34,7 @@ def _user_out(u: dict) -> UserOut:
     )
 
 
-def _build_auth_response(user: dict, access: str, raw_refresh: str) -> AuthResponse:
+def _build_auth_response(user: dict, access: str, raw_refresh: str) -> AuthResponse:  # type: ignore[type-arg]
     return AuthResponse(
         access_token=access,
         refresh_token=raw_refresh,
@@ -43,7 +43,7 @@ def _build_auth_response(user: dict, access: str, raw_refresh: str) -> AuthRespo
     )
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED, response_model=AuthResponse)
+@router.post("/register", status_code=status.HTTP_201_CREATED, response_model=AuthResponse, response_model_by_alias=True)
 async def register(body: RegisterRequest) -> AuthResponse:
     async with db.get_connection() as conn:
         existing = await auth_repo.get_user_by_email(conn, body.email)
@@ -66,7 +66,7 @@ async def register(body: RegisterRequest) -> AuthResponse:
     return _build_auth_response(user, access, raw_refresh)
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post("/login", response_model=AuthResponse, response_model_by_alias=True)
 async def login(body: LoginRequest) -> AuthResponse:
     async with db.get_connection() as conn:
         user = await auth_repo.get_user_by_email(conn, body.email)
@@ -81,7 +81,7 @@ async def login(body: LoginRequest) -> AuthResponse:
     return _build_auth_response(user, access, raw_refresh)
 
 
-@router.post("/refresh", response_model=AuthResponse)
+@router.post("/refresh", response_model=AuthResponse, response_model_by_alias=True)
 async def refresh(body: RefreshRequest) -> AuthResponse:
     token_hash = hash_refresh_token(body.refresh_token)
     async with db.get_connection() as conn:
@@ -101,7 +101,7 @@ async def refresh(body: RefreshRequest) -> AuthResponse:
     return _build_auth_response(user, access, raw_refresh)
 
 
-@router.get("/me", response_model=UserOut)
+@router.get("/me", response_model=UserOut, response_model_by_alias=True)
 async def me(current_user: CurrentUser) -> UserOut:
     async with db.get_connection() as conn:
         user = await auth_repo.get_user_by_id(conn, current_user["sub"])

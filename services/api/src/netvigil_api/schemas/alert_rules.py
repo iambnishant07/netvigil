@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from netvigil_api.schemas.base import CamelModel
 
 
-class AlertRuleCreate(BaseModel):
+class AlertRuleCreate(CamelModel):
     name: str
     min_severity: str
     channel: str
@@ -12,7 +12,7 @@ class AlertRuleCreate(BaseModel):
     enabled: bool = True
 
 
-class AlertRuleUpdate(BaseModel):
+class AlertRuleUpdate(CamelModel):
     name: str | None = None
     min_severity: str | None = None
     channel: str | None = None
@@ -21,7 +21,7 @@ class AlertRuleUpdate(BaseModel):
     enabled: bool | None = None
 
 
-class AlertRuleOut(BaseModel):
+class AlertRuleOut(CamelModel):
     id: str
     organization_id: str
     name: str

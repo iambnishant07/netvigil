@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import EmailStr, field_validator
+
+from netvigil_api.schemas.base import CamelModel
 
 
-class RegisterRequest(BaseModel):
+class RegisterRequest(CamelModel):
     organization_name: str
     email: EmailStr
     password: str
@@ -24,16 +26,16 @@ class RegisterRequest(BaseModel):
         return v
 
 
-class LoginRequest(BaseModel):
+class LoginRequest(CamelModel):
     email: EmailStr
     password: str
 
 
-class RefreshRequest(BaseModel):
+class RefreshRequest(CamelModel):
     refresh_token: str
 
 
-class UserOut(BaseModel):
+class UserOut(CamelModel):
     id: str
     organization_id: str
     email: str
@@ -42,7 +44,7 @@ class UserOut(BaseModel):
     created_at: str
 
 
-class AuthResponse(BaseModel):
+class AuthResponse(CamelModel):
     access_token: str
     refresh_token: str
     expires_in: int
