@@ -13,6 +13,8 @@ build/
 .env.local
 .env.*.local
 !.env.example
+# Mobile local env (contains LAN IP — not for CI)
+packages/mobile/.env.local
 
 # Python
 __pycache__/
