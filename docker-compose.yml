@@ -1,0 +1,188 @@
+services:
+
+  # ── PostgreSQL 16 ───────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB:       netvigil
+      POSTGRES_USER:     netvigil
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netvigil -d netvigil"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis 7 ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Kafka 3.7 (KRaft — no ZooKeeper) ───────────────────────────────────────
+  kafka:
+    image: bitnami/kafka:3.7
+    ports:
+      - "9092:9092"   # external (host)
+    environment:
+      KAFKA_CFG_NODE_ID:                         "0"
+      KAFKA_CFG_PROCESS_ROLES:                   controller,broker
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS:        "0@kafka:9093"
+      KAFKA_CFG_LISTENERS:                       "PLAINTEXT_INT://:9094,PLAINTEXT_EXT://:9092,CONTROLLER://:9093"
+      KAFKA_CFG_ADVERTISED_LISTENERS:            "PLAINTEXT_INT://kafka:9094,PLAINTEXT_EXT://localhost:9092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP:  "CONTROLLER:PLAINTEXT,PLAINTEXT_INT:PLAINTEXT,PLAINTEXT_EXT:PLAINTEXT"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME:      PLAINTEXT_INT
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES:       CONTROLLER
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE:       "true"
+      KAFKA_CFG_LOG_RETENTION_HOURS:             "168"
+    volumes:
+      - kafka_data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # ── InfluxDB 2.7 ────────────────────────────────────────────────────────────
+  influxdb:
+    image: influxdb:2.7-alpine
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE:         setup
+      DOCKER_INFLUXDB_INIT_USERNAME:     netvigil
+      DOCKER_INFLUXDB_INIT_PASSWORD:     ${INFLUXDB_PASSWORD:-devpassword}
+      DOCKER_INFLUXDB_INIT_ORG:          netvigil
+      DOCKER_INFLUXDB_INIT_BUCKET:       netflow
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN:  ${INFLUXDB_TOKEN:-dev-influx-token-change-in-prod}
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── FastAPI gateway ──────────────────────────────────────────────────────────
+  api:
+    build:
+      context: services/api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      POSTGRES_HOST:              postgres
+      POSTGRES_PORT:              "5432"
+      POSTGRES_DB:                netvigil
+      POSTGRES_USER:              netvigil
+      POSTGRES_PASSWORD:          ${POSTGRES_PASSWORD:-devpassword}
+      REDIS_URL:                  redis://redis:6379
+      KAFKA_BOOTSTRAP_SERVERS:    kafka:9094
+      INFLUXDB_URL:               http://influxdb:8086
+      INFLUXDB_TOKEN:             ${INFLUXDB_TOKEN:-dev-influx-token-change-in-prod}
+      INFLUXDB_ORG:               netvigil
+      INFLUXDB_BUCKET:            netflow
+      JWT_PRIVATE_KEY:            ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY:             ${JWT_PUBLIC_KEY}
+      ANTHROPIC_API_KEY:          ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Ingestor ─────────────────────────────────────────────────────────────────
+  ingestor:
+    build:
+      context: services/ingestor
+      dockerfile: Dockerfile
+    ports:
+      - "514:514/udp"    # Syslog
+      - "2055:2055/udp"  # NetFlow v9
+    environment:
+      POSTGRES_HOST:              postgres
+      POSTGRES_PORT:              "5432"
+      POSTGRES_DB:                netvigil
+      POSTGRES_USER:              netvigil
+      POSTGRES_PASSWORD:          ${POSTGRES_PASSWORD:-devpassword}
+      KAFKA_BOOTSTRAP_SERVERS:    kafka:9094
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Detector ─────────────────────────────────────────────────────────────────
+  detector:
+    build:
+      context: services/detector
+      dockerfile: Dockerfile
+    environment:
+      POSTGRES_HOST:              postgres
+      POSTGRES_PORT:              "5432"
+      POSTGRES_DB:                netvigil
+      POSTGRES_USER:              netvigil
+      POSTGRES_PASSWORD:          ${POSTGRES_PASSWORD:-devpassword}
+      KAFKA_BOOTSTRAP_SERVERS:    kafka:9094
+      INFLUXDB_URL:               http://influxdb:8086
+      INFLUXDB_TOKEN:             ${INFLUXDB_TOKEN:-dev-influx-token-change-in-prod}
+      INFLUXDB_ORG:               netvigil
+      INFLUXDB_BUCKET:            netflow
+      ANTHROPIC_API_KEY:          ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Dispatcher ───────────────────────────────────────────────────────────────
+  dispatcher:
+    build:
+      context: services/dispatcher
+      dockerfile: Dockerfile
+    environment:
+      POSTGRES_HOST:              postgres
+      POSTGRES_PORT:              "5432"
+      POSTGRES_DB:                netvigil
+      POSTGRES_USER:              netvigil
+      POSTGRES_PASSWORD:          ${POSTGRES_PASSWORD:-devpassword}
+      KAFKA_BOOTSTRAP_SERVERS:    kafka:9094
+      SMTP_HOST:                  ${SMTP_HOST:-localhost}
+      SMTP_PORT:                  ${SMTP_PORT:-587}
+      SMTP_USER:                  ${SMTP_USER:-}
+      SMTP_PASSWORD:              ${SMTP_PASSWORD:-}
+      ALERT_FROM_EMAIL:           ${ALERT_FROM_EMAIL:-alerts@netvigil.local}
+      TWILIO_ACCOUNT_SID:         ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN:          ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER:         ${TWILIO_FROM_NUMBER:-}
+      EXPO_ACCESS_TOKEN:          ${EXPO_ACCESS_TOKEN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  kafka_data:
+  influxdb_data:
+
+networks:
+  default:
+    name: netvigil
