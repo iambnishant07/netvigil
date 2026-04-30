@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { useIncidentStream } from '../hooks/use-incident-stream.ts';
 import {
   BarChart,
   Bar,
@@ -55,6 +56,8 @@ function KpiTile({ label, value, sub, accent = 'text-slate-100' }: KpiTileProps)
 }
 
 export default function DashboardPage() {
+  useIncidentStream();
+
   const { data: kpis, isLoading: kpisLoading } = useQuery({
     queryKey: qk.dashboard.kpis(),
     queryFn: () => apiClient.get<DashboardKpis>('/dashboard/kpis'),

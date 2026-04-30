@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useIncidentStream } from '../hooks/use-incident-stream';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { qk } from '../lib/query-keys';
 import { apiClient } from '../lib/api-client';
@@ -30,6 +31,8 @@ function formatTs(iso: string): string {
 const PAGE_SIZE = 10;
 
 export default function IncidentsScreen({ navigation }: Props) {
+  useIncidentStream();
+
   const [severity, setSeverity] = useState<Severity | ''>('');
   const [status,   setStatus]   = useState<IncidentStatus | ''>('');
   const [page,     setPage]     = useState(1);

@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useIncidentStream } from '../hooks/use-incident-stream';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { qk } from '../lib/query-keys';
@@ -47,6 +48,8 @@ function KpiTile({ label, value, accent = '#e2e8f0' }: KpiTileProps) {
 }
 
 export default function DashboardScreen() {
+  useIncidentStream();
+
   const navigation = useNavigation<NavProp>();
 
   const { data: kpis, isLoading } = useQuery({

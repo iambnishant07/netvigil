@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useIncidentStream } from '../hooks/use-incident-stream.ts';
 import { Link } from 'react-router-dom';
 import { qk } from '../lib/query-keys.ts';
 import { apiClient } from '../lib/api-client.ts';
@@ -33,6 +34,8 @@ function formatTs(iso: string): string {
 const PAGE_SIZE = 10;
 
 export default function IncidentsPage() {
+  useIncidentStream();
+
   const [severity, setSeverity] = useState<Severity | ''>('');
   const [status,   setStatus]   = useState<IncidentStatus | ''>('');
   const [page,     setPage]     = useState(1);
