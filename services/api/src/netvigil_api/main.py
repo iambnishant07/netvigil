@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -23,21 +22,13 @@ _log = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    _log.info("startup: connecting to database …")
-    dsn_preview = settings.asyncpg_dsn.split("@")[-1] if "@" in settings.asyncpg_dsn else "(local)"
-    _log.info("startup: DSN host = %s", dsn_preview)
-    try:
-        await asyncio.wait_for(db.create_pool(settings.asyncpg_dsn), timeout=30)
-    except asyncio.TimeoutError:
-        _log.error("startup: database pool creation timed out after 30s — check DATABASE_URL and network")
-        raise
-    except Exception as exc:
-        _log.error("startup: database pool creation failed: %s", exc, exc_info=True)
-        raise
-    _log.info("startup: database pool ready")
+    # Store DSN — pool opens lazily on first DB request so uvicorn binds immediately.
+    _log.info("startup: configuring database DSN")
+    db.configure(settings.asyncpg_dsn)
+    _log.info("startup: ready to serve")
     yield
     await db.close_pool()
-    _log.info("shutdown: database pool closed")
+    _log.info("shutdown: complete")
 
 
 app = FastAPI(
