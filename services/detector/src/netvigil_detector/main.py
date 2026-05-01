@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import ssl
 from typing import Any
 
 import asyncpg
@@ -16,6 +17,21 @@ from aiokafka import AIOKafkaConsumer
 
 from netvigil_detector import ensemble, mitre, narrative, writer
 from netvigil_detector.config import settings
+
+
+def _kafka_kwargs() -> dict[str, object]:
+    kwargs: dict[str, object] = {
+        "bootstrap_servers": settings.kafka_bootstrap_servers,
+        "value_deserializer": lambda b: json.loads(b.decode()),
+        "auto_offset_reset": "earliest",
+    }
+    if settings.kafka_security_protocol == "SASL_SSL":
+        kwargs["security_protocol"] = "SASL_SSL"
+        kwargs["sasl_mechanism"] = settings.kafka_sasl_mechanism
+        kwargs["sasl_plain_username"] = settings.kafka_sasl_username
+        kwargs["sasl_plain_password"] = settings.kafka_sasl_password
+        kwargs["ssl_context"] = ssl.create_default_context()
+    return kwargs
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger(__name__)
@@ -68,10 +84,8 @@ async def main() -> None:
 
     consumer = AIOKafkaConsumer(
         *TOPICS,
-        bootstrap_servers=settings.kafka_bootstrap_servers,
         group_id=settings.kafka_consumer_group,
-        value_deserializer=lambda b: json.loads(b.decode()),
-        auto_offset_reset="earliest",
+        **_kafka_kwargs(),
     )
     await consumer.start()
     log.info("Detector consuming topics: %s", TOPICS)
