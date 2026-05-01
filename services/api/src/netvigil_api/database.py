@@ -17,10 +17,15 @@ async def create_pool(dsn: str) -> None:
     needs_ssl = "sslmode" in params or "neon.tech" in dsn
 
     if needs_ssl:
-        # Strip all query params — asyncpg takes ssl context directly
+        # Strip all query params — asyncpg takes ssl context directly.
+        # statement_cache_size=0 required for Neon/PgBouncer pooler compatibility.
         clean_dsn = dsn.split("?")[0]
         ssl_ctx = ssl.create_default_context()
-        _pool = await asyncpg.create_pool(clean_dsn, ssl=ssl_ctx, min_size=2, max_size=20)
+        _pool = await asyncpg.create_pool(
+            clean_dsn, ssl=ssl_ctx,
+            min_size=2, max_size=20,
+            statement_cache_size=0,
+        )
     else:
         _pool = await asyncpg.create_pool(dsn, min_size=2, max_size=20)
 
