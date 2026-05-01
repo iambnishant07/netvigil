@@ -17,5 +17,11 @@
     "prettier": "^3.0.0",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@netvigil/web>@types/react": "~18.3.0",
+      "@netvigil/web>@types/react-dom": "~18.3.0"
+    }
   }
 }
