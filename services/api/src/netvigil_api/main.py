@@ -38,10 +38,13 @@ app = FastAPI(
 )
 
 _origins = [o.strip() for o in settings.allowed_origins.split(",") if o.strip()]
+# allow_credentials=True is incompatible with allow_origins=["*"] per the CORS spec.
+# When origins is "*" (dev), disable credentials so the wildcard is valid.
+_wildcard = _origins == ["*"] or not _origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_origins or ["*"],
-    allow_credentials=True,
+    allow_origins=_origins if not _wildcard else ["*"],
+    allow_credentials=not _wildcard,
     allow_methods=["*"],
     allow_headers=["*"],
 )
