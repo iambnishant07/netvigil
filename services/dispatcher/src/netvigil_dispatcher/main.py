@@ -61,9 +61,11 @@ async def _dispatch(
         await sms_ch.send(incident, to_number)
 
     elif channel == "push":
-        token = settings.expo_access_token
-        if token:
-            await push_ch.send(incident, token)
+        if target_uid:
+            u = await _get_user(pool, str(target_uid))
+            device_token = (u or {}).get("expo_push_token") if u else None
+            if device_token:
+                await push_ch.send(incident, device_token)
 
 
 async def main() -> None:

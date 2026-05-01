@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
 
 from netvigil_api import database as db
 from netvigil_api.config import settings
 from netvigil_api.deps import CurrentUser
 from netvigil_api.repositories import auth as auth_repo
 from netvigil_api.schemas.auth import AuthResponse, LoginRequest, RefreshRequest, RegisterRequest, UserOut
+
+
+class PushTokenRequest(BaseModel):
+    pushToken: str
 from netvigil_api.security import (
     create_access_token,
     generate_refresh_token,
@@ -108,3 +113,13 @@ async def me(current_user: CurrentUser) -> UserOut:
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return _user_out(user)
+
+
+@router.put("/me/push-token", status_code=status.HTTP_204_NO_CONTENT)
+async def register_push_token(body: PushTokenRequest, current_user: CurrentUser) -> None:
+    async with db.get_connection() as conn:
+        await conn.execute(
+            "UPDATE users SET expo_push_token = $1 WHERE id = $2::uuid",
+            body.pushToken,
+            current_user["sub"],
+        )

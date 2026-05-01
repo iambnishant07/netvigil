@@ -3,6 +3,7 @@ import { View, Text, Switch, StyleSheet, TouchableOpacity, ActivityIndicator, Al
 import * as Notifications from 'expo-notifications';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useAuth } from '../contexts/auth-context';
+import { apiClient } from '../lib/api-client';
 
 export default function SettingsScreen() {
   const { user, biometricEnabled, setBiometric, logout } = useAuth();
@@ -33,6 +34,7 @@ export default function SettingsScreen() {
     try {
       const tokenData = await Notifications.getExpoPushTokenAsync();
       setPushToken(tokenData.data);
+      await apiClient.put<void>('/auth/me/push-token', { pushToken: tokenData.data });
     } catch {
       Alert.alert('Error', 'Could not retrieve push token. Use a physical device for push notifications.');
     }
