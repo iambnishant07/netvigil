@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     kafka_bootstrap_servers:  str = "localhost:9092"
     kafka_consumer_group:     str = "netvigil-dispatcher"
     kafka_security_protocol:  str = "PLAINTEXT"
-    kafka_sasl_mechanism:     str = "SCRAM-SHA-256"
+    kafka_sasl_mechanism:     str = "PLAIN"
     kafka_sasl_username:      str = ""
     kafka_sasl_password:      str = ""
 

@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # Kafka — set KAFKA_SECURITY_PROTOCOL=SASL_SSL and SASL creds for Upstash
     kafka_bootstrap_servers:  str = "localhost:9092"
     kafka_security_protocol:  str = "PLAINTEXT"
-    kafka_sasl_mechanism:     str = "SCRAM-SHA-256"
+    kafka_sasl_mechanism:     str = "PLAIN"
     kafka_sasl_username:      str = ""
     kafka_sasl_password:      str = ""
 
