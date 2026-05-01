@@ -12,6 +12,12 @@ if config.config_file_name is not None:
 
 
 def _db_url() -> str:
+    url = os.getenv("DATABASE_URL", "")
+    if url:
+        # Neon / cloud: normalise scheme for SQLAlchemy + psycopg2
+        url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        url = url.replace("postgres://",   "postgresql+psycopg2://", 1)
+        return url
     host = os.getenv("POSTGRES_HOST", "localhost")
     port = os.getenv("POSTGRES_PORT", "5432")
     db   = os.getenv("POSTGRES_DB",   "netvigil")
