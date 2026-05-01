@@ -1,0 +1,5 @@
+[build]
+buildCommand = "pnpm --filter @netvigil/web build:prod"
+
+[deploy]
+startCommand = "caddy run --config /Caddyfile --adapter caddyfile"
