@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import ssl
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -8,6 +9,7 @@ from urllib.parse import urlparse, parse_qs
 import asyncpg
 
 _pool: asyncpg.Pool | None = None  # type: ignore[type-arg]
+_log = logging.getLogger(__name__)
 
 
 async def create_pool(dsn: str) -> None:
@@ -20,14 +22,16 @@ async def create_pool(dsn: str) -> None:
         # Strip all query params — asyncpg takes ssl context directly.
         # statement_cache_size=0 required for Neon/PgBouncer pooler compatibility.
         clean_dsn = dsn.split("?")[0]
+        _log.info("db: creating pool with SSL (clean_dsn host=%s)", urlparse(clean_dsn).hostname)
         ssl_ctx = ssl.create_default_context()
         _pool = await asyncpg.create_pool(
             clean_dsn, ssl=ssl_ctx,
-            min_size=2, max_size=20,
+            min_size=1, max_size=10,
             statement_cache_size=0,
         )
     else:
-        _pool = await asyncpg.create_pool(dsn, min_size=2, max_size=20)
+        _log.info("db: creating pool without SSL")
+        _pool = await asyncpg.create_pool(dsn, min_size=1, max_size=10)
 
 
 async def close_pool() -> None:
