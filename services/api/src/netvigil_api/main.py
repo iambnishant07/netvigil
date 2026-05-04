@@ -44,9 +44,13 @@ _wildcard = _origins == ["*"] or not _origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins if not _wildcard else ["*"],
+    # Also accept any *.up.railway.app origin so staging/prod sub-domains
+    # are covered without updating the env var for every new deployment.
+    allow_origin_regex=r"https://.*\.up\.railway\.app" if not _wildcard else None,
     allow_credentials=not _wildcard,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin"],
+    expose_headers=["Content-Type"],
 )
 
 _PREFIX = "/api/v1"
