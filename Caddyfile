@@ -6,11 +6,11 @@
 :{$PORT} {
 	encode gzip
 
-	# Proxy all /api/* requests to the FastAPI backend.
-	# Browser sees one domain → no cross-origin preflight, no CORS.
+	# Proxy all /api/* requests to the FastAPI backend via Railway private
+	# networking (bypasses CDN which drops service-to-service POST requests).
 	handle /api/* {
-		reverse_proxy https://netvigil-api-production.up.railway.app {
-			header_up Host netvigil-api-production.up.railway.app
+		reverse_proxy http://netvigil-api.railway.internal:8080 {
+			header_up Host netvigil-api.railway.internal
 		}
 	}
 
