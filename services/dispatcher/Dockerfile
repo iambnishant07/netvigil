@@ -3,7 +3,7 @@ WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+RUN pip install --no-cache-dir uv
 COPY pyproject.toml ./
 COPY src ./src
 RUN uv pip install --system .
