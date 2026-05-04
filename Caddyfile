@@ -1,0 +1,23 @@
+{
+	admin off
+	auto_https off
+}
+
+:{$PORT} {
+	encode gzip
+
+	# Proxy all /api/* requests to the FastAPI backend.
+	# Browser sees one domain → no cross-origin preflight, no CORS.
+	handle /api/* {
+		reverse_proxy https://netvigil-api-production.up.railway.app {
+			header_up Host netvigil-api-production.up.railway.app
+		}
+	}
+
+	# SPA — serve built assets, fall back to index.html for client-side routes.
+	handle {
+		root * /app/packages/web/dist
+		file_server
+		try_files {path} /index.html
+	}
+}
