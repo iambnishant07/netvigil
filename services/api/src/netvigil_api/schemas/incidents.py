@@ -32,5 +32,7 @@ class IncidentList(CamelModel):
 
 
 class IncidentPatch(CamelModel):
-    status: str
-    note: str | None = None
+    status: str | None = None
+    severity: str | None = None
+    narrative: str | None = None
+    note: str | None = None  # accepted for compat, not persisted

@@ -71,11 +71,17 @@ async def get_incident(incident_id: str, current_user: CurrentUser) -> IncidentO
 async def patch_incident(
     incident_id: str, body: IncidentPatch, current_user: CurrentUser
 ) -> IncidentOut:
-    valid = {"open", "acknowledged", "confirmed", "false_positive"}
-    if body.status not in valid:
+    valid_statuses = {"open", "acknowledged", "confirmed", "false_positive"}
+    valid_severities = {"info", "low", "medium", "high", "critical"}
+    if body.status is not None and body.status not in valid_statuses:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status")
+    if body.severity is not None and body.severity not in valid_severities:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid severity")
     async with db.get_connection() as conn:
-        incident = await inc_repo.patch_incident(conn, current_user["org"], incident_id, body.status)
+        incident = await inc_repo.patch_incident(
+            conn, current_user["org"], incident_id,
+            status=body.status, severity=body.severity, narrative=body.narrative,
+        )
     if not incident:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
     return IncidentOut(**incident)

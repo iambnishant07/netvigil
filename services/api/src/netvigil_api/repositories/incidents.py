@@ -83,14 +83,27 @@ async def patch_incident(
     conn: asyncpg.Connection,  # type: ignore[type-arg]
     org_id: str,
     incident_id: str,
-    status: str,
+    status: str | None = None,
+    severity: str | None = None,
+    narrative: str | None = None,
 ) -> dict | None:  # type: ignore[type-arg]
     await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", org_id)
+    sets: list[str] = []
+    params: list[object] = []
+    idx = 1
+    if status is not None:
+        sets.append(f"status = ${idx}"); params.append(status); idx += 1
+    if severity is not None:
+        sets.append(f"severity = ${idx}"); params.append(severity); idx += 1
+    if narrative is not None:
+        sets.append(f"narrative = ${idx}"); params.append(narrative); idx += 1
+    if not sets:
+        return await get_incident(conn, org_id, incident_id)
+    params.extend([incident_id, org_id])
     row = await conn.fetchrow(
-        """UPDATE incidents SET status = $2
-           WHERE id = $1 AND organization_id = $3::uuid
-           RETURNING *""",
-        incident_id, status, org_id,
+        f"UPDATE incidents SET {', '.join(sets)}"
+        f" WHERE id = ${idx}::uuid AND organization_id = ${idx+1}::uuid RETURNING *",
+        *params,
     )
     return _row_to_dict(row) if row else None  # type: ignore[arg-type]
 
