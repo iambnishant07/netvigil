@@ -22,9 +22,6 @@ ENV VITE_API_URL=${VITE_API_URL}
 RUN pnpm --filter @netvigil/web build:prod
 
 FROM caddy:2-alpine
+EXPOSE 80
 COPY --from=builder /app/packages/web/dist /app/packages/web/dist
 COPY Caddyfile /etc/caddy/Caddyfile
-
-# Baked-in default so {$API_PRIVATE_HOST} is never empty — Railway overrides this
-# with the real private hostname at runtime via the API_PRIVATE_HOST env var.
-ENV API_PRIVATE_HOST=localhost:8000

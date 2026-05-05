@@ -3,7 +3,7 @@
 	auto_https off
 }
 
-:{$PORT} {
+:80 {
 	root * /app/packages/web/dist
 	file_server
 	try_files {path} /index.html
