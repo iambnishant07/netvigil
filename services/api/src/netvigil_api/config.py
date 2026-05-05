@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import logging
 import re
 import textwrap
@@ -9,6 +10,8 @@ from cryptography.hazmat.primitives.serialization import (
     NoEncryption,
     PrivateFormat,
     PublicFormat,
+    load_der_private_key,
+    load_der_public_key,
     load_pem_private_key,
     load_pem_public_key,
 )
@@ -75,12 +78,11 @@ class Settings(BaseSettings):
 
     @staticmethod
     def _normalise_pem(key: str) -> str:
-        # Phase 1: normalise escape sequences and line endings so we always
-        # work with actual LF newlines from here on.
+        # Phase 1: normalise escape sequences and line endings.
         key = key.replace("\\n", "\n").replace("\r\n", "\n").replace("\r", "").strip()
 
-        # Phase 2: reconstruct PEM framing when the key is completely flat
-        # (header+base64+footer jammed together with no newlines at all).
+        # Phase 2: reconstruct PEM framing when key is completely flat
+        # (header+base64+footer with no newlines).
         if "\n" not in key:
             match = re.match(r"(-----BEGIN [^-]+-----)(.*?)(-----END [^-]+-----)", key)
             if match:
@@ -88,29 +90,46 @@ class Settings(BaseSettings):
                 wrapped = "\n".join(textwrap.wrap(b64.strip(), 64))
                 key = f"{header}\n{wrapped}\n{footer}"
 
-        # Phase 3: load with cryptography and re-export. This normalises any
-        # remaining issues (e.g. base64 body on a single long line, wrong
-        # line-wrap width, trailing spaces) and guarantees python-jose can
-        # parse the result.
+        # Phase 3: load via cryptography and re-export to guarantee correct
+        # framing and 64-char line wrapping (handles long single-line base64).
         key_bytes = key.encode()
         try:
-            private_key = load_pem_private_key(key_bytes, password=None)
-            return private_key.private_bytes(
+            pk = load_pem_private_key(key_bytes, password=None)
+            return pk.private_bytes(
                 Encoding.PEM, PrivateFormat.TraditionalOpenSSL, NoEncryption()
             ).decode()
         except Exception:
             pass
         try:
-            public_key = load_pem_public_key(key_bytes)
-            return public_key.public_bytes(
-                Encoding.PEM, PublicFormat.SubjectPublicKeyInfo
-            ).decode()
+            pub = load_pem_public_key(key_bytes)
+            return pub.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo).decode()
+        except Exception:
+            pass
+
+        # Phase 4: key stored as raw base64-encoded DER (no PEM headers at all).
+        try:
+            der = base64.b64decode(key.replace("\n", "").replace(" ", ""))
+            try:
+                pk = load_der_private_key(der, password=None)
+                return pk.private_bytes(
+                    Encoding.PEM, PrivateFormat.TraditionalOpenSSL, NoEncryption()
+                ).decode()
+            except Exception:
+                pass
+            try:
+                pub = load_der_public_key(der)
+                return pub.public_bytes(
+                    Encoding.PEM, PublicFormat.SubjectPublicKeyInfo
+                ).decode()
+            except Exception:
+                pass
         except Exception:
             pass
 
         _log.warning(
-            "JWT PEM key cannot be parsed after normalisation — "
-            "check Railway env vars. First 120 chars: %r",
+            "JWT key cannot be parsed in any known format — "
+            "regenerate the key pair and update Railway env vars. "
+            "First 120 chars: %r",
             key[:120],
         )
         return key
