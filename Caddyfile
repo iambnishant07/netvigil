@@ -9,8 +9,8 @@
 	# Proxy all /api/* requests to the FastAPI backend via Railway private
 	# networking (bypasses CDN which drops service-to-service POST requests).
 	handle /api/* {
-		reverse_proxy http://netvigil.railway.internal:8081 {
-			header_up Host netvigil.railway.internal
+		reverse_proxy http://{$API_PRIVATE_HOST} {
+			header_up Host {$API_PRIVATE_HOST}
 		}
 	}
 
