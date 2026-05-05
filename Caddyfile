@@ -4,17 +4,7 @@
 }
 
 :{$PORT} {
-	encode gzip
-
-	handle /api/* {
-		reverse_proxy http://{$API_PRIVATE_HOST} {
-			header_up Host {$API_PRIVATE_HOST}
-		}
-	}
-
-	handle {
-		root * /app/packages/web/dist
-		file_server
-		try_files {path} /index.html
-	}
+	root * /app/packages/web/dist
+	file_server
+	try_files {path} /index.html
 }
