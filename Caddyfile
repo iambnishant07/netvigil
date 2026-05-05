@@ -6,16 +6,12 @@
 :{$PORT} {
 	encode gzip
 
-	# Proxy /api/* to the FastAPI backend (which also mounts at /api/v1/*).
-	# API_PRIVATE_HOST must be set to servicename.railway.internal:PORT.
-	# Fallback keeps Caddy alive if the var is missing — UI loads, API calls fail gracefully.
 	handle /api/* {
-		reverse_proxy http://{$API_PRIVATE_HOST:localhost:8000} {
-			header_up Host {$API_PRIVATE_HOST:localhost:8000}
+		reverse_proxy http://{$API_PRIVATE_HOST} {
+			header_up Host {$API_PRIVATE_HOST}
 		}
 	}
 
-	# SPA — serve built assets, fall back to index.html for client-side routes.
 	handle {
 		root * /app/packages/web/dist
 		file_server
