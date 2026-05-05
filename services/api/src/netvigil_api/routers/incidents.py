@@ -37,7 +37,7 @@ async def list_incidents(
     )
 
 
-@router.get("/stream")
+@router.websocket("/stream")
 async def incident_stream(websocket: WebSocket) -> None:
     await websocket.accept()
     conn: asyncpg.Connection = await asyncpg.connect(settings.asyncpg_dsn)  # type: ignore[type-arg]
