@@ -25,6 +25,6 @@ FROM caddy:2-alpine
 COPY --from=builder /app/packages/web/dist /app/packages/web/dist
 COPY Caddyfile /etc/caddy/Caddyfile
 
-# Shell wrapper sets a safe default for API_PRIVATE_HOST so Caddy always starts.
-# Railway will override this with the real value via the API_PRIVATE_HOST env var.
-CMD ["sh", "-c", "export API_PRIVATE_HOST=${API_PRIVATE_HOST:-localhost:8000} && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile"]
+# Baked-in default so {$API_PRIVATE_HOST} is never empty — Railway overrides this
+# with the real private hostname at runtime via the API_PRIVATE_HOST env var.
+ENV API_PRIVATE_HOST=localhost:8000
