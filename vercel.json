@@ -1,4 +1,6 @@
 {
+  "framework": null,
+  "installCommand": "pnpm install",
   "buildCommand": "pnpm --filter @netvigil/web build:prod",
   "outputDirectory": "packages/web/dist",
   "rewrites": [
