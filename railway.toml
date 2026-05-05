@@ -1,5 +1,3 @@
 [build]
-buildCommand = "pnpm --filter @netvigil/web build:prod"
-
-[deploy]
-startCommand = "caddy run --config /app/Caddyfile --adapter caddyfile"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
