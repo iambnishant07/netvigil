@@ -54,10 +54,19 @@ class Settings(BaseSettings):
         )
 
     def private_key_pem(self) -> str:
-        return self.jwt_private_key.replace("\\n", "\n")
+        return self._normalise_pem(self.jwt_private_key)
 
     def public_key_pem(self) -> str:
-        return self.jwt_public_key.replace("\\n", "\n")
+        return self._normalise_pem(self.jwt_public_key)
+
+    @staticmethod
+    def _normalise_pem(key: str) -> str:
+        # Accept three storage formats:
+        #   1. literal \n escape sequences  (Railway single-line paste)
+        #   2. actual LF newlines           (multi-line env var)
+        #   3. CRLF newlines               (Windows copy-paste)
+        key = key.replace("\\n", "\n").replace("\r\n", "\n").replace("\r", "")
+        return key.strip()
 
 
 settings = Settings()
