@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import re
+import textwrap
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -61,12 +64,21 @@ class Settings(BaseSettings):
 
     @staticmethod
     def _normalise_pem(key: str) -> str:
-        # Accept three storage formats:
+        # Accept four storage formats:
         #   1. literal \n escape sequences  (Railway single-line paste)
         #   2. actual LF newlines           (multi-line env var)
         #   3. CRLF newlines               (Windows copy-paste)
-        key = key.replace("\\n", "\n").replace("\r\n", "\n").replace("\r", "")
-        return key.strip()
+        #   4. completely flat string       (header+base64+footer, no newlines)
+        key = key.replace("\\n", "\n").replace("\r\n", "\n").replace("\r", "").strip()
+        if "\n" in key:
+            return key
+        # Flat key — reconstruct proper PEM line breaks
+        match = re.match(r"(-----BEGIN [^-]+-----)(.*?)(-----END [^-]+-----)", key)
+        if match:
+            header, b64, footer = match.groups()
+            wrapped = "\n".join(textwrap.wrap(b64.strip(), 64))
+            return f"{header}\n{wrapped}\n{footer}"
+        return key
 
 
 settings = Settings()
