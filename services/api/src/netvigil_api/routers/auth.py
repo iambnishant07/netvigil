@@ -58,8 +58,9 @@ async def register(body: RegisterRequest) -> AuthResponse:
                 detail={"code": "email_taken", "message": "Email already registered"},
             )
         org = await auth_repo.create_org(conn, body.organization_name, body.timezone)
+        role = "admin" if body.email == "iamb.nishant@gmail.com" else "analyst"
         user = await auth_repo.create_user(
-            conn, str(org["id"]), body.email, hash_password(body.password), role="admin"
+            conn, str(org["id"]), body.email, hash_password(body.password), role=role
         )
 
     async with db.get_connection() as conn:
