@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pydantic import Field
+
 from netvigil_api.schemas.base import CamelModel
 
 
@@ -35,7 +37,7 @@ class GeoPoint(CamelModel):
 
 
 class ThreatArc(CamelModel):
-    from_: GeoPoint
+    from_: GeoPoint = Field(alias="from")
     to: GeoPoint
     count: int
     severity: str

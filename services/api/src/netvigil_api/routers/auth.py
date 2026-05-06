@@ -86,9 +86,8 @@ async def register(body: RegisterRequest) -> AuthResponse:
                 detail={"code": "email_taken", "message": "Email already registered"},
             )
         org = await auth_repo.create_org(conn, body.organization_name, body.timezone)
-        role = "admin" if body.email == "iamb.nishant@gmail.com" else "analyst"
         user = await auth_repo.create_user(
-            conn, str(org["id"]), body.email, hash_password(body.password), role=role
+            conn, str(org["id"]), body.email, hash_password(body.password), role="admin"
         )
     return await _issue_tokens(user)
 
@@ -219,10 +218,9 @@ async def google_auth(body: GoogleAuthRequest) -> AuthResponse:
                 await auth_repo.link_google_sub(conn, str(existing["id"]), google_sub)
                 user = await auth_repo.get_user_by_id(conn, str(existing["id"]))
             else:
-                role = "admin" if email == "iamb.nishant@gmail.com" else "analyst"
                 org = await auth_repo.create_org(conn, body.organization_name, "Australia/Brisbane")
                 user = await auth_repo.create_google_user(
-                    conn, str(org["id"]), email, google_sub, role=role,
+                    conn, str(org["id"]), email, google_sub, role="admin",
                 )
     if not user:
         raise _INVALID
