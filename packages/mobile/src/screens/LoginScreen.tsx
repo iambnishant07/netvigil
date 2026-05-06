@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
@@ -6,8 +6,6 @@ import {
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
-import * as Google from 'expo-auth-session/providers/google';
 import { useMutation } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/auth-context';
@@ -20,6 +18,7 @@ WebBrowser.maybeCompleteAuthSession();
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 const GOOGLE_CLIENT_ID = process.env['EXPO_PUBLIC_GOOGLE_CLIENT_ID'] ?? '';
+const API_URL = (process.env['EXPO_PUBLIC_API_URL'] ?? '').replace(/\/api\/v1$/, '');
 
 export default function LoginScreen({ navigation }: Props) {
   const [email,    setEmail]    = useState('');
@@ -28,30 +27,39 @@ export default function LoginScreen({ navigation }: Props) {
   const [passErr,  setPassErr]  = useState('');
 
   const { login, biometricEnabled } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Use Expo auth proxy so only a web client ID is needed (no iOS/Android client IDs required)
-  const proxyRedirect = AuthSession.makeRedirectUri({ useProxy: true });
-  const [_request, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
-    webClientId:     GOOGLE_CLIENT_ID,
-    iosClientId:     GOOGLE_CLIENT_ID,
-    androidClientId: GOOGLE_CLIENT_ID,
-    redirectUri:     proxyRedirect,
-  });
-
-  const googleMutation = useMutation({
-    mutationFn: (idToken: string) =>
-      apiClient.post<AuthResponse>('/auth/google', { idToken }),
-    onSuccess: async (data) => { await login(data); },
-    onError:   (err: Error) => Alert.alert('Google sign-in failed', err.message),
-  });
-
-  useEffect(() => {
-    if (googleResponse?.type === 'success') {
-      const token = googleResponse.params['id_token'];
-      if (token) googleMutation.mutate(token);
+  async function handleGoogleSignIn() {
+    setGoogleLoading(true);
+    try {
+      const result = await WebBrowser.openAuthSessionAsync(
+        `${API_URL}/api/v1/auth/google/mobile`,
+        'netvigil://',
+      );
+      if (result.type !== 'success') return;
+      const pairs = result.url.replace(/^[^?]*\?/, '').split('&');
+      const qp = (k: string) => { const e = pairs.find(s => s.startsWith(`${k}=`)); return e ? decodeURIComponent(e.slice(k.length + 1)) : ''; };
+      const err = qp('error');
+      if (err) { Alert.alert('Google sign-in failed', err); return; }
+      await login({
+        accessToken:  qp('access_token'),
+        refreshToken: qp('refresh_token'),
+        expiresIn:    parseInt(qp('expires_in') || '900', 10),
+        user: {
+          id:             qp('user_id'),
+          organizationId: qp('org_id'),
+          email:          qp('email'),
+          role:           (qp('role') || 'admin') as 'admin' | 'analyst' | 'viewer',
+          mfaEnrolled:    qp('mfa_enrolled') === 'true',
+          createdAt:      qp('created_at') || new Date().toISOString(),
+        },
+      });
+    } catch (e: unknown) {
+      Alert.alert('Google sign-in failed', e instanceof Error ? e.message : 'Unknown error');
+    } finally {
+      setGoogleLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [googleResponse]);
+  }
 
   const mutation = useMutation({
     mutationFn: (data: { email: string; password: string }) =>
@@ -149,11 +157,14 @@ export default function LoginScreen({ navigation }: Props) {
 
         {!!GOOGLE_CLIENT_ID && (
           <TouchableOpacity
-            style={[styles.googleBtn, googleMutation.isPending && styles.btnDisabled]}
-            onPress={() => void promptGoogleAsync({ useProxy: true })}
-            disabled={googleMutation.isPending}
+            style={[styles.googleBtn, googleLoading && styles.btnDisabled]}
+            onPress={() => void handleGoogleSignIn()}
+            disabled={googleLoading}
           >
-            <Text style={styles.googleBtnText}>🔵  Continue with Google</Text>
+            {googleLoading
+              ? <ActivityIndicator color="#e2e8f0" />
+              : <Text style={styles.googleBtnText}>🔵  Continue with Google</Text>
+            }
           </TouchableOpacity>
         )}
 

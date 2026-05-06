@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import httpx
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
+from urllib.parse import urlencode
 
 from netvigil_api import database as db
 from netvigil_api.config import settings
@@ -232,3 +234,100 @@ async def google_auth(body: GoogleAuthRequest) -> AuthResponse:
     if not user:
         raise _INVALID
     return await _issue_tokens(user)
+
+
+# ── Google OAuth — mobile browser flow ───────────────────────────────────────
+
+_APP_SCHEME = "netvigil"
+
+
+@router.get("/google/mobile")
+async def google_mobile_start() -> RedirectResponse:
+    if not settings.google_client_id:
+        raise HTTPException(status_code=503, detail="Google OAuth not configured")
+    callback_url = f"{settings.api_base_url}/api/v1/auth/google/mobile-callback"
+    qs = urlencode({
+        "client_id":     settings.google_client_id,
+        "redirect_uri":  callback_url,
+        "response_type": "code",
+        "scope":         "openid email profile",
+        "access_type":   "online",
+    })
+    return RedirectResponse(f"https://accounts.google.com/o/oauth2/v2/auth?{qs}")
+
+
+@router.get("/google/mobile-callback")
+async def google_mobile_callback(
+    code: str | None = None, error: str | None = None
+) -> RedirectResponse:
+    def _err(msg: str) -> RedirectResponse:
+        return RedirectResponse(f"{_APP_SCHEME}://oauth-callback?error={msg}")
+
+    if error or not code:
+        return _err(error or "cancelled")
+    if not settings.google_client_secret:
+        return _err("server_misconfigured")
+
+    callback_url = f"{settings.api_base_url}/api/v1/auth/google/mobile-callback"
+
+    async with httpx.AsyncClient() as client:
+        token_resp = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code":          code,
+                "client_id":     settings.google_client_id,
+                "client_secret": settings.google_client_secret,
+                "redirect_uri":  callback_url,
+                "grant_type":    "authorization_code",
+            },
+        )
+    if token_resp.status_code != 200:
+        return _err("token_exchange_failed")
+
+    id_token: str = token_resp.json().get("id_token", "")
+    if not id_token:
+        return _err("no_id_token")
+
+    async with httpx.AsyncClient() as client:
+        info_resp = await client.get(
+            "https://oauth2.googleapis.com/tokeninfo",
+            params={"id_token": id_token},
+        )
+    if info_resp.status_code != 200:
+        return _err("invalid_token")
+
+    info = info_resp.json()
+    google_sub: str = info.get("sub", "")
+    email: str = info.get("email", "")
+    if not google_sub or not email:
+        return _err("missing_user_info")
+
+    async with db.get_connection() as conn:
+        user = await auth_repo.get_user_by_google_sub(conn, google_sub)
+        if not user:
+            existing = await auth_repo.get_user_by_email(conn, email)
+            if existing:
+                await auth_repo.link_google_sub(conn, str(existing["id"]), google_sub)
+                user = await auth_repo.get_user_by_id(conn, str(existing["id"]))
+            else:
+                org = await auth_repo.create_org(conn, email.split("@")[0], "Australia/Brisbane")
+                user = await auth_repo.create_google_user(
+                    conn, str(org["id"]), email, google_sub, role="admin",
+                )
+    if not user:
+        return _err("user_creation_failed")
+
+    auth = await _issue_tokens(user)
+    u = auth.user
+    qs = urlencode({
+        "access_token":  auth.access_token,
+        "refresh_token": auth.refresh_token,
+        "expires_in":    auth.expires_in,
+        "user_id":       u.id,
+        "org_id":        u.organization_id,
+        "email":         u.email,
+        "role":          u.role,
+        "mfa_enrolled":  str(u.mfa_enrolled).lower(),
+        "created_at":    u.created_at,
+    })
+    return RedirectResponse(f"{_APP_SCHEME}://oauth-callback?{qs}")

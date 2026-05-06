@@ -53,7 +53,9 @@ class Settings(BaseSettings):
     jwt_refresh_token_ttl: int = 604_800  # 7 days
 
     # Google OAuth
-    google_client_id: str = ""
+    google_client_id:     str = ""
+    google_client_secret: str = ""
+    api_base_url:         str = "https://netvigil-api.up.railway.app"
 
     # Anthropic
     anthropic_api_key: str = ""
