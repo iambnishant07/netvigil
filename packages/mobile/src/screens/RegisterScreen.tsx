@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import { useMutation } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -27,8 +28,12 @@ export default function RegisterScreen({ navigation }: Props) {
 
   const { login } = useAuth();
 
+  const proxyRedirect = AuthSession.makeRedirectUri({ useProxy: true });
   const [_req, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
-    webClientId: GOOGLE_CLIENT_ID,
+    webClientId:     GOOGLE_CLIENT_ID,
+    iosClientId:     GOOGLE_CLIENT_ID,
+    androidClientId: GOOGLE_CLIENT_ID,
+    redirectUri:     proxyRedirect,
   });
 
   const googleMutation = useMutation({
@@ -161,7 +166,7 @@ export default function RegisterScreen({ navigation }: Props) {
         {!!GOOGLE_CLIENT_ID && (
           <TouchableOpacity
             style={[styles.googleBtn, googleMutation.isPending && styles.btnDisabled]}
-            onPress={() => void promptGoogleAsync()}
+            onPress={() => void promptGoogleAsync({ useProxy: true })}
             disabled={googleMutation.isPending}
           >
             <Text style={styles.googleBtnText}>🔵  Continue with Google</Text>

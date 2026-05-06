@@ -6,6 +6,7 @@ import {
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import { useMutation } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -28,8 +29,13 @@ export default function LoginScreen({ navigation }: Props) {
 
   const { login, biometricEnabled } = useAuth();
 
+  // Use Expo auth proxy so only a web client ID is needed (no iOS/Android client IDs required)
+  const proxyRedirect = AuthSession.makeRedirectUri({ useProxy: true });
   const [_request, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
-    webClientId: GOOGLE_CLIENT_ID,
+    webClientId:     GOOGLE_CLIENT_ID,
+    iosClientId:     GOOGLE_CLIENT_ID,
+    androidClientId: GOOGLE_CLIENT_ID,
+    redirectUri:     proxyRedirect,
   });
 
   const googleMutation = useMutation({
@@ -144,7 +150,7 @@ export default function LoginScreen({ navigation }: Props) {
         {!!GOOGLE_CLIENT_ID && (
           <TouchableOpacity
             style={[styles.googleBtn, googleMutation.isPending && styles.btnDisabled]}
-            onPress={() => void promptGoogleAsync()}
+            onPress={() => void promptGoogleAsync({ useProxy: true })}
             disabled={googleMutation.isPending}
           >
             <Text style={styles.googleBtnText}>🔵  Continue with Google</Text>
