@@ -229,7 +229,7 @@ async def google_auth(body: GoogleAuthRequest) -> AuthResponse:
             else:
                 org = await auth_repo.create_org(conn, body.organization_name, "Australia/Brisbane")
                 user = await auth_repo.create_google_user(
-                    conn, str(org["id"]), email, google_sub, role="admin",
+                    conn, str(org["id"]), email, google_sub, role="analyst",
                 )
     if not user:
         raise _INVALID
@@ -312,7 +312,7 @@ async def google_mobile_callback(
             else:
                 org = await auth_repo.create_org(conn, email.split("@")[0], "Australia/Brisbane")
                 user = await auth_repo.create_google_user(
-                    conn, str(org["id"]), email, google_sub, role="admin",
+                    conn, str(org["id"]), email, google_sub, role="analyst",
                 )
     if not user:
         return _err("user_creation_failed")
