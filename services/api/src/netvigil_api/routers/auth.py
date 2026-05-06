@@ -207,8 +207,15 @@ async def google_auth(body: GoogleAuthRequest) -> AuthResponse:
     info = resp.json()
     google_sub: str = info.get("sub", "")
     email: str = info.get("email", "")
+    aud: str = info.get("aud", "")
     if not google_sub or not email:
         raise _INVALID
+    # Reject tokens not issued for our client (when GOOGLE_CLIENT_ID is configured)
+    if settings.google_client_id and aud != settings.google_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "invalid_google_token", "message": "Token audience mismatch"},
+        )
 
     async with db.get_connection() as conn:
         user = await auth_repo.get_user_by_google_sub(conn, google_sub)

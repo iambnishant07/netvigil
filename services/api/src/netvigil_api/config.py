@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     jwt_access_token_ttl:  int = 900      # 15 min
     jwt_refresh_token_ttl: int = 604_800  # 7 days
 
+    # Google OAuth
+    google_client_id: str = ""
+
     # Anthropic
     anthropic_api_key: str = ""
 

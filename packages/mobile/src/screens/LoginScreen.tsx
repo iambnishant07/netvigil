@@ -29,7 +29,7 @@ export default function LoginScreen({ navigation }: Props) {
   const { login, biometricEnabled } = useAuth();
 
   const [_request, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
+    webClientId: GOOGLE_CLIENT_ID,
   });
 
   const googleMutation = useMutation({

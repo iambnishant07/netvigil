@@ -28,7 +28,7 @@ export default function RegisterScreen({ navigation }: Props) {
   const { login } = useAuth();
 
   const [_req, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
+    webClientId: GOOGLE_CLIENT_ID,
   });
 
   const googleMutation = useMutation({
@@ -127,7 +127,7 @@ export default function RegisterScreen({ navigation }: Props) {
             onChangeText={setPassword}
             secureTextEntry
             autoComplete="new-password"
-            placeholder="Minimum 8 characters"
+            placeholder="Minimum 12 characters"
             placeholderTextColor="#475569"
           />
           {!!errors['password'] && <Text style={styles.errorText}>{errors['password']}</Text>}
