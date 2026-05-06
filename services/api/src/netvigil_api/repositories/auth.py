@@ -24,6 +24,11 @@ async def get_user_by_id(conn: asyncpg.Connection, user_id: str) -> dict | None:
     return dict(row) if row else None  # type: ignore[arg-type]
 
 
+async def get_user_by_google_sub(conn: asyncpg.Connection, google_sub: str) -> dict | None:  # type: ignore[type-arg]
+    row = await conn.fetchrow("SELECT * FROM users WHERE google_sub = $1", google_sub)
+    return dict(row) if row else None  # type: ignore[arg-type]
+
+
 async def create_user(
     conn: asyncpg.Connection,  # type: ignore[type-arg]
     org_id: str,
@@ -38,6 +43,29 @@ async def create_user(
         user_id, org_id, email, password_hash, role,
     )
     return dict(row)  # type: ignore[arg-type]
+
+
+async def create_google_user(
+    conn: asyncpg.Connection,  # type: ignore[type-arg]
+    org_id: str,
+    email: str,
+    google_sub: str,
+    role: str = "analyst",
+) -> dict:  # type: ignore[type-arg]
+    user_id = str(uuid7())
+    row = await conn.fetchrow(
+        """INSERT INTO users(id, organization_id, email, password_hash, role, google_sub)
+           VALUES($1,$2,$3,'GOOGLE_OAUTH',$4,$5) RETURNING *""",
+        user_id, org_id, email, role, google_sub,
+    )
+    return dict(row)  # type: ignore[arg-type]
+
+
+async def link_google_sub(conn: asyncpg.Connection, user_id: str, google_sub: str) -> None:  # type: ignore[type-arg]
+    await conn.execute(
+        "UPDATE users SET google_sub = $1 WHERE id = $2::uuid",
+        google_sub, user_id,
+    )
 
 
 async def store_refresh_token(
@@ -74,4 +102,27 @@ async def revoke_refresh_token(conn: asyncpg.Connection, token_hash: str) -> Non
     await conn.execute(
         "UPDATE refresh_tokens SET revoked = TRUE WHERE token_hash = $1",
         token_hash,
+    )
+
+
+# ── MFA ───────────────────────────────────────────────────────────────────────
+
+async def set_mfa_secret(conn: asyncpg.Connection, user_id: str, secret: str) -> None:  # type: ignore[type-arg]
+    await conn.execute(
+        "UPDATE users SET mfa_secret = $1 WHERE id = $2::uuid",
+        secret, user_id,
+    )
+
+
+async def enroll_mfa(conn: asyncpg.Connection, user_id: str) -> None:  # type: ignore[type-arg]
+    await conn.execute(
+        "UPDATE users SET mfa_enrolled = TRUE WHERE id = $1::uuid",
+        user_id,
+    )
+
+
+async def disable_mfa(conn: asyncpg.Connection, user_id: str) -> None:  # type: ignore[type-arg]
+    await conn.execute(
+        "UPDATE users SET mfa_enrolled = FALSE, mfa_secret = NULL WHERE id = $1::uuid",
+        user_id,
     )

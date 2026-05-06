@@ -2,9 +2,16 @@ import * as SecureStore from 'expo-secure-store';
 
 const BASE = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:8000/api/v1';
 
-export const TOKEN_KEY = 'nv_access_token';
-export const REFRESH_KEY = 'nv_refresh_token';
+export const TOKEN_KEY    = 'nv_access_token';
+export const REFRESH_KEY  = 'nv_refresh_token';
 export const BIOMETRIC_KEY = 'nv_biometric_enabled';
+
+// Registered by AuthProvider so the api-client can force a logout when the
+// refresh token itself has expired, without creating a circular import.
+let _onSessionExpired: (() => Promise<void>) | null = null;
+export function registerSessionExpiredHandler(cb: () => Promise<void>): void {
+  _onSessionExpired = cb;
+}
 
 export async function storeTokens(access: string, refresh: string): Promise<void> {
   await Promise.all([
@@ -34,6 +41,7 @@ async function tryRefresh(): Promise<string> {
 
   if (!res.ok) {
     await clearTokens();
+    if (_onSessionExpired) void _onSessionExpired();
     throw new Error('Session expired. Please log in again.');
   }
 

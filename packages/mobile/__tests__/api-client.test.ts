@@ -8,7 +8,7 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 const mockFetch = jest.fn();
-global.fetch = mockFetch as unknown as typeof fetch;
+Object.assign(globalThis, { fetch: mockFetch as typeof fetch });
 
 describe('storeTokens', () => {
   beforeEach(() => jest.clearAllMocks());

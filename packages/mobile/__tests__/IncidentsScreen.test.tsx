@@ -5,6 +5,10 @@ import IncidentsScreen from '../src/screens/IncidentsScreen';
 const mockNavigation = { navigate: jest.fn() };
 const mockRoute      = { params: {} };
 
+jest.mock('../src/hooks/use-incident-stream', () => ({
+  useIncidentStream: jest.fn(),
+}));
+
 // Data must be inline — outer const refs are undefined at jest.mock hoist time
 jest.mock('../src/lib/api-client', () => ({
   apiClient: {

@@ -13,6 +13,11 @@ jest.mock('expo-local-authentication', () => ({
   hasHardwareAsync:  jest.fn().mockResolvedValue(true),
 }));
 
+jest.mock('expo-web-browser', () => ({ maybeCompleteAuthSession: jest.fn() }));
+jest.mock('expo-auth-session/providers/google', () => ({
+  useIdTokenAuthRequest: () => [null, null, jest.fn()],
+}));
+
 jest.mock('../src/contexts/auth-context', () => ({
   useAuth: () => ({
     login:            jest.fn().mockResolvedValue(undefined),
@@ -24,10 +29,12 @@ function makeClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
 }
 
+const mockNav = { navigate: jest.fn(), goBack: jest.fn() } as unknown as Parameters<typeof LoginScreen>[0]['navigation'];
+
 function renderScreen() {
   return render(
     <QueryClientProvider client={makeClient()}>
-      <LoginScreen />
+      <LoginScreen navigation={mockNav} route={{} as Parameters<typeof LoginScreen>[0]['route']} />
     </QueryClientProvider>,
   );
 }

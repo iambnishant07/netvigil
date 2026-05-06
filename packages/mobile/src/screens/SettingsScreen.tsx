@@ -2,10 +2,14 @@ import { useState, useEffect } from 'react';
 import { View, Text, Switch, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as LocalAuthentication from 'expo-local-authentication';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/auth-context';
 import { apiClient } from '../lib/api-client';
+import type { SettingsStackParamList } from '../navigation/AppNavigator';
 
-export default function SettingsScreen() {
+type Props = NativeStackScreenProps<SettingsStackParamList, 'SettingsHome'>;
+
+export default function SettingsScreen({ navigation }: Props) {
   const { user, biometricEnabled, setBiometric, logout } = useAuth();
   const [pushToken,   setPushToken]   = useState<string | null>(null);
   const [hasHardware, setHasHardware] = useState(false);
@@ -77,6 +81,39 @@ export default function SettingsScreen() {
               thumbColor="#fff"
             />
           </View>
+        </View>
+      </View>
+
+      {/* MFA */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Security — Two-factor auth</Text>
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => {
+              if (user?.mfaEnrolled) {
+                Alert.alert(
+                  'Disable MFA',
+                  'This will remove two-factor authentication from your account. Are you sure?',
+                  [{ text: 'Cancel', style: 'cancel' }, { text: 'Disable', style: 'destructive', onPress: () => navigation.navigate('MfaSetup') }],
+                );
+              } else {
+                navigation.navigate('MfaSetup');
+              }
+            }}
+          >
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>
+                {user?.mfaEnrolled ? '✅ MFA enabled' : 'Enable MFA'}
+              </Text>
+              <Text style={styles.settingDesc}>
+                {user?.mfaEnrolled
+                  ? 'Tap to manage or disable'
+                  : 'Add a second factor via authenticator app'}
+              </Text>
+            </View>
+            <Text style={styles.actionArrow}>›</Text>
+          </TouchableOpacity>
         </View>
       </View>
 

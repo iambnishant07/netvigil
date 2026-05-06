@@ -13,26 +13,33 @@ jest.mock('expo-local-authentication', () => ({
 }));
 
 jest.mock('../src/lib/api-client', () => ({
-  TOKEN_KEY:    'nv_access_token',
-  REFRESH_KEY:  'nv_refresh_token',
-  BIOMETRIC_KEY: 'nv_biometric_enabled',
-  storeTokens: jest.fn().mockResolvedValue(undefined),
-  clearTokens: jest.fn().mockResolvedValue(undefined),
-  apiClient:   {},
+  TOKEN_KEY:                     'nv_access_token',
+  REFRESH_KEY:                   'nv_refresh_token',
+  BIOMETRIC_KEY:                 'nv_biometric_enabled',
+  storeTokens:                   jest.fn().mockResolvedValue(undefined),
+  clearTokens:                   jest.fn().mockResolvedValue(undefined),
+  registerSessionExpiredHandler: jest.fn(),
+  apiClient:                     {},
 }));
 
 import * as SecureStore from 'expo-secure-store';
 
-const mockUser = { id: 'u-1', email: 'analyst@example.com', role: 'analyst' };
+const mockUser = {
+  id: 'u-1', organizationId: 'org-1', email: 'analyst@example.com',
+  role: 'analyst' as const, mfaEnrolled: false, createdAt: '2026-01-01T00:00:00Z',
+};
 const mockAuthResponse = {
   accessToken:  'at-abc',
   refreshToken: 'rt-def',
+  expiresIn:    900,
   user:         mockUser,
 };
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>;
 }
+
+const settle = () => act(async () => { await new Promise<void>((r) => setTimeout(r, 100)); });
 
 describe('AuthProvider', () => {
   beforeEach(() => {
@@ -42,14 +49,14 @@ describe('AuthProvider', () => {
 
   it('starts loading and resolves to unauthenticated when no stored token', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
-    await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
+    await settle();
     expect(result.current.isLoading).toBe(false);
     expect(result.current.isAuthenticated).toBe(false);
   });
 
   it('login authenticates the user', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
-    await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
+    await settle();
     expect(result.current.isAuthenticated).toBe(false);
 
     await act(async () => { await result.current.login(mockAuthResponse); });
@@ -60,7 +67,7 @@ describe('AuthProvider', () => {
 
   it('logout clears authentication', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
-    await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
+    await settle();
 
     await act(async () => { await result.current.login(mockAuthResponse); });
     expect(result.current.isAuthenticated).toBe(true);
@@ -72,7 +79,7 @@ describe('AuthProvider', () => {
 
   it('setBiometric(true) stores flag and enables biometric', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
-    await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
+    await settle();
 
     await act(async () => { await result.current.setBiometric(true); });
 
@@ -82,7 +89,7 @@ describe('AuthProvider', () => {
 
   it('setBiometric(false) removes flag and disables biometric', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
-    await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
+    await settle();
 
     await act(async () => { await result.current.setBiometric(false); });
 
@@ -93,12 +100,12 @@ describe('AuthProvider', () => {
   it('hydrates from SecureStore on mount when token present', async () => {
     (SecureStore.getItemAsync as jest.Mock).mockImplementation((key: string) => {
       if (key === 'nv_access_token') return Promise.resolve('stored-token');
-      if (key === 'nv_user') return Promise.resolve(JSON.stringify(mockUser));
+      if (key === 'nv_user')         return Promise.resolve(JSON.stringify(mockUser));
       return Promise.resolve(null);
     });
 
     const { result } = renderHook(() => useAuth(), { wrapper });
-    await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
+    await settle();
 
     expect(result.current.isAuthenticated).toBe(true);
     expect(result.current.user?.email).toBe('analyst@example.com');

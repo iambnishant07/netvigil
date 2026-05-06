@@ -45,7 +45,35 @@ class UserOut(CamelModel):
 
 
 class AuthResponse(CamelModel):
-    access_token: str
-    refresh_token: str
-    expires_in: int
-    user: UserOut
+    access_token: str = ""
+    refresh_token: str = ""
+    expires_in: int = 0
+    user: UserOut | None = None
+    mfa_required: bool = False
+    mfa_token: str | None = None
+
+
+# ── MFA ───────────────────────────────────────────────────────────────────────
+
+class MfaSetupResponse(CamelModel):
+    provisioning_uri: str
+
+
+class MfaVerifyRequest(CamelModel):
+    code: str
+
+
+class MfaChallengeRequest(CamelModel):
+    mfa_token: str
+    code: str
+
+
+class MfaDisableRequest(CamelModel):
+    code: str
+
+
+# ── Google OAuth ──────────────────────────────────────────────────────────────
+
+class GoogleAuthRequest(CamelModel):
+    id_token: str
+    organization_name: str = "My Organisation"

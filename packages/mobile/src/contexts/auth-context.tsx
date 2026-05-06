@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 import type { AuthResponse, User } from '@netvigil/shared-types';
-import { storeTokens, clearTokens, TOKEN_KEY, BIOMETRIC_KEY } from '../lib/api-client';
+import { storeTokens, clearTokens, registerSessionExpiredHandler, TOKEN_KEY, BIOMETRIC_KEY } from '../lib/api-client';
 
 interface AuthContextValue {
   user: User | null;
@@ -25,6 +25,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void hydrate();
+    registerSessionExpiredHandler(async () => {
+      setUser(null);
+      setBiometricState(false);
+    });
   }, []);
 
   async function hydrate() {
@@ -58,9 +62,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function login(response: AuthResponse): Promise<void> {
+    // mfaRequired responses carry no tokens — LoginScreen routes to MfaChallenge instead
+    if (response.mfaRequired) return;
     await storeTokens(response.accessToken, response.refreshToken);
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(response.user));
-    setUser(response.user);
+    setUser(response.user ?? null);
   }
 
   async function logout(): Promise<void> {

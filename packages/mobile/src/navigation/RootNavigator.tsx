@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/auth-context';
 import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
+import OfflineBanner from '../components/OfflineBanner';
 
 type RootStackParamList = {
   Auth: undefined;
@@ -26,6 +27,7 @@ export default function RootNavigator() {
 
   return (
     <SafeAreaProvider>
+      <OfflineBanner />
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {isAuthenticated ? (

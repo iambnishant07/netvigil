@@ -74,14 +74,14 @@ describe('IncidentDetailScreen', () => {
     });
   });
 
-  it('renders status update section', async () => {
+  it('renders edit incident section', async () => {
     renderScreen();
     await waitFor(() => {
-      expect(screen.getByText('Update status')).toBeTruthy();
+      expect(screen.getByText('Edit incident')).toBeTruthy();
     });
   });
 
-  it('shows status options excluding current (open)', async () => {
+  it('shows all status options', async () => {
     renderScreen();
     await waitFor(() => {
       expect(screen.getByText('Acknowledged')).toBeTruthy();
@@ -95,6 +95,6 @@ describe('IncidentDetailScreen', () => {
       expect(screen.getByText('Acknowledged')).toBeTruthy();
     });
     fireEvent.press(screen.getByText('Acknowledged'));
-    expect(screen.getByText('Save status')).toBeTruthy();
+    expect(screen.getByText('Save changes')).toBeTruthy();
   });
 });

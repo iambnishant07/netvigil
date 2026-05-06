@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import httpx
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
@@ -7,18 +8,35 @@ from netvigil_api import database as db
 from netvigil_api.config import settings
 from netvigil_api.deps import CurrentUser
 from netvigil_api.repositories import auth as auth_repo
-from netvigil_api.schemas.auth import AuthResponse, LoginRequest, RefreshRequest, RegisterRequest, UserOut
+from netvigil_api.schemas.auth import (
+    AuthResponse,
+    GoogleAuthRequest,
+    LoginRequest,
+    MfaChallengeRequest,
+    MfaDisableRequest,
+    MfaSetupResponse,
+    MfaVerifyRequest,
+    RefreshRequest,
+    RegisterRequest,
+    UserOut,
+)
+from netvigil_api.security import (
+    create_access_token,
+    create_mfa_token,
+    decode_mfa_token,
+    generate_refresh_token,
+    generate_totp_secret,
+    get_totp_provisioning_uri,
+    hash_password,
+    hash_refresh_token,
+    verify_password,
+    verify_totp,
+)
 
 
 class PushTokenRequest(BaseModel):
     pushToken: str
-from netvigil_api.security import (
-    create_access_token,
-    generate_refresh_token,
-    hash_password,
-    hash_refresh_token,
-    verify_password,
-)
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -48,6 +66,16 @@ def _build_auth_response(user: dict, access: str, raw_refresh: str) -> AuthRespo
     )
 
 
+async def _issue_tokens(user: dict) -> AuthResponse:  # type: ignore[type-arg]
+    raw_refresh, refresh_hash = generate_refresh_token()
+    async with db.get_connection() as conn:
+        await auth_repo.store_refresh_token(
+            conn, str(user["id"]), refresh_hash, settings.jwt_refresh_token_ttl
+        )
+    access = create_access_token(str(user["id"]), str(user["organization_id"]), user["role"])
+    return _build_auth_response(user, access, raw_refresh)
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=AuthResponse, response_model_by_alias=True)
 async def register(body: RegisterRequest) -> AuthResponse:
     async with db.get_connection() as conn:
@@ -62,14 +90,7 @@ async def register(body: RegisterRequest) -> AuthResponse:
         user = await auth_repo.create_user(
             conn, str(org["id"]), body.email, hash_password(body.password), role=role
         )
-
-    async with db.get_connection() as conn:
-        raw_refresh, refresh_hash = generate_refresh_token()
-        await auth_repo.store_refresh_token(
-            conn, str(user["id"]), refresh_hash, settings.jwt_refresh_token_ttl
-        )
-    access = create_access_token(str(user["id"]), str(org["id"]), user["role"])
-    return _build_auth_response(user, access, raw_refresh)
+    return await _issue_tokens(user)
 
 
 @router.post("/login", response_model=AuthResponse, response_model_by_alias=True)
@@ -78,13 +99,9 @@ async def login(body: LoginRequest) -> AuthResponse:
         user = await auth_repo.get_user_by_email(conn, body.email)
     if not user or not verify_password(user["password_hash"], body.password):
         raise _INVALID
-    raw_refresh, refresh_hash = generate_refresh_token()
-    async with db.get_connection() as conn:
-        await auth_repo.store_refresh_token(
-            conn, str(user["id"]), refresh_hash, settings.jwt_refresh_token_ttl
-        )
-    access = create_access_token(str(user["id"]), str(user["organization_id"]), user["role"])
-    return _build_auth_response(user, access, raw_refresh)
+    if user["mfa_enrolled"]:
+        return AuthResponse(mfa_required=True, mfa_token=create_mfa_token(str(user["id"])))
+    return await _issue_tokens(user)
 
 
 @router.post("/refresh", response_model=AuthResponse, response_model_by_alias=True)
@@ -98,13 +115,7 @@ async def refresh(body: RefreshRequest) -> AuthResponse:
         user = await auth_repo.get_user_by_id(conn, str(record["user_id"]))
     if not user:
         raise _INVALID
-    raw_refresh, new_hash = generate_refresh_token()
-    async with db.get_connection() as conn:
-        await auth_repo.store_refresh_token(
-            conn, str(user["id"]), new_hash, settings.jwt_refresh_token_ttl
-        )
-    access = create_access_token(str(user["id"]), str(user["organization_id"]), user["role"])
-    return _build_auth_response(user, access, raw_refresh)
+    return await _issue_tokens(user)
 
 
 @router.get("/me", response_model=UserOut, response_model_by_alias=True)
@@ -124,3 +135,95 @@ async def register_push_token(body: PushTokenRequest, current_user: CurrentUser)
             body.pushToken,
             current_user["sub"],
         )
+
+
+# ── MFA ───────────────────────────────────────────────────────────────────────
+
+@router.post("/mfa/setup", response_model=MfaSetupResponse, response_model_by_alias=True)
+async def mfa_setup(current_user: CurrentUser) -> MfaSetupResponse:
+    async with db.get_connection() as conn:
+        user = await auth_repo.get_user_by_id(conn, current_user["sub"])
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    secret = generate_totp_secret()
+    async with db.get_connection() as conn:
+        await auth_repo.set_mfa_secret(conn, current_user["sub"], secret)
+    uri = get_totp_provisioning_uri(secret, user["email"])
+    return MfaSetupResponse(provisioning_uri=uri)
+
+
+@router.post("/mfa/verify", status_code=status.HTTP_204_NO_CONTENT)
+async def mfa_verify(body: MfaVerifyRequest, current_user: CurrentUser) -> None:
+    async with db.get_connection() as conn:
+        user = await auth_repo.get_user_by_id(conn, current_user["sub"])
+    if not user or not user.get("mfa_secret"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA not set up")
+    if not verify_totp(user["mfa_secret"], body.code):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code")
+    async with db.get_connection() as conn:
+        await auth_repo.enroll_mfa(conn, current_user["sub"])
+
+
+@router.post("/mfa/disable", status_code=status.HTTP_204_NO_CONTENT)
+async def mfa_disable(body: MfaDisableRequest, current_user: CurrentUser) -> None:
+    async with db.get_connection() as conn:
+        user = await auth_repo.get_user_by_id(conn, current_user["sub"])
+    if not user or not user.get("mfa_secret"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA not enrolled")
+    if not verify_totp(user["mfa_secret"], body.code):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid code")
+    async with db.get_connection() as conn:
+        await auth_repo.disable_mfa(conn, current_user["sub"])
+
+
+@router.post("/mfa/challenge", response_model=AuthResponse, response_model_by_alias=True)
+async def mfa_challenge(body: MfaChallengeRequest) -> AuthResponse:
+    try:
+        user_id = decode_mfa_token(body.mfa_token)
+    except ValueError:
+        raise _INVALID
+    async with db.get_connection() as conn:
+        user = await auth_repo.get_user_by_id(conn, user_id)
+    if not user or not user.get("mfa_secret"):
+        raise _INVALID
+    if not verify_totp(user["mfa_secret"], body.code):
+        raise _INVALID
+    return await _issue_tokens(user)
+
+
+# ── Google OAuth ──────────────────────────────────────────────────────────────
+
+@router.post("/google", response_model=AuthResponse, response_model_by_alias=True)
+async def google_auth(body: GoogleAuthRequest) -> AuthResponse:
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            "https://oauth2.googleapis.com/tokeninfo",
+            params={"id_token": body.id_token},
+        )
+    if resp.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "invalid_google_token", "message": "Invalid Google token"},
+        )
+    info = resp.json()
+    google_sub: str = info.get("sub", "")
+    email: str = info.get("email", "")
+    if not google_sub or not email:
+        raise _INVALID
+
+    async with db.get_connection() as conn:
+        user = await auth_repo.get_user_by_google_sub(conn, google_sub)
+        if not user:
+            existing = await auth_repo.get_user_by_email(conn, email)
+            if existing:
+                await auth_repo.link_google_sub(conn, str(existing["id"]), google_sub)
+                user = await auth_repo.get_user_by_id(conn, str(existing["id"]))
+            else:
+                role = "admin" if email == "iamb.nishant@gmail.com" else "analyst"
+                org = await auth_repo.create_org(conn, body.organization_name, "Australia/Brisbane")
+                user = await auth_repo.create_google_user(
+                    conn, str(org["id"]), email, google_sub, role=role,
+                )
+    if not user:
+        raise _INVALID
+    return await _issue_tokens(user)

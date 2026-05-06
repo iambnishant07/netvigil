@@ -7,8 +7,9 @@ import time
 import uuid
 from typing import Any
 
+import pyotp
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
+from argon2.exceptions import VerificationError, VerifyMismatchError
 from jose import JWTError, jwt
 
 from netvigil_api.config import settings
@@ -26,7 +27,7 @@ def hash_password(plain: str) -> str:
 def verify_password(hashed: str, plain: str) -> bool:
     try:
         return _ph.verify(hashed, plain)
-    except VerifyMismatchError:
+    except (VerifyMismatchError, VerificationError):
         return False
 
 
@@ -75,6 +76,43 @@ def generate_refresh_token() -> tuple[str, str]:
 
 def hash_refresh_token(raw: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+# ── MFA / TOTP ────────────────────────────────────────────────────────────────
+
+def generate_totp_secret() -> str:
+    return pyotp.random_base32()
+
+
+def get_totp_provisioning_uri(secret: str, email: str) -> str:
+    return pyotp.TOTP(secret).provisioning_uri(name=email, issuer_name="NetVigil")
+
+
+def verify_totp(secret: str, code: str) -> bool:
+    return pyotp.TOTP(secret).verify(code, valid_window=1)
+
+
+def create_mfa_token(user_id: str) -> str:
+    """Short-lived (5 min) JWT that proves password was verified but MFA pending."""
+    now = int(time.time())
+    payload: dict[str, Any] = {
+        "sub": user_id,
+        "typ": "mfa",
+        "jti": str(uuid7()),
+        "iat": now,
+        "exp": now + 300,
+    }
+    return jwt.encode(payload, settings.private_key_pem(), algorithm="RS256")
+
+
+def decode_mfa_token(token: str) -> str:
+    try:
+        payload = jwt.decode(token, settings.public_key_pem(), algorithms=["RS256"])
+        if payload.get("typ") != "mfa":
+            raise ValueError("Not an MFA token")
+        return str(payload["sub"])
+    except JWTError as exc:
+        raise ValueError("Invalid MFA token") from exc
 
 
 # ── Shared device secret ──────────────────────────────────────────────────────

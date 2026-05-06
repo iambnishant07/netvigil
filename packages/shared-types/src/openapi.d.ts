@@ -758,7 +758,11 @@ export interface components {
              * @example 900
              */
             expiresIn: number;
-            user: components["schemas"]["User"];
+            user: components["schemas"]["User"] | null;
+            /** True when the account requires MFA; no tokens are issued yet */
+            mfaRequired?: boolean;
+            /** Short-lived JWT to complete MFA via POST /auth/mfa/challenge */
+            mfaToken?: string;
         };
         User: {
             /** Format: uuid */

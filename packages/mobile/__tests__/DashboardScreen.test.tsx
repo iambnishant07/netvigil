@@ -10,6 +10,10 @@ jest.mock('@react-navigation/bottom-tabs', () => ({
   useBottomTabBarHeight: () => 0,
 }));
 
+jest.mock('../src/hooks/use-incident-stream', () => ({
+  useIncidentStream: jest.fn(),
+}));
+
 const mockKpis = {
   eventsPerSecond: 1234,
   openIncidentsBySeverity: { critical: 2, high: 3, medium: 5, low: 1, info: 0 },

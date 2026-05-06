@@ -15,6 +15,16 @@
       },
       "package": "au.edu.vu.netvigil"
     },
-    "plugins": ["expo-local-authentication", "expo-notifications"]
+    "plugins": [
+      "expo-local-authentication",
+      "expo-notifications",
+      "expo-web-browser",
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsDownloadToken": "MAPBOX_SECRET_DOWNLOAD_TOKEN"
+        }
+      ]
+    ]
   }
 }
