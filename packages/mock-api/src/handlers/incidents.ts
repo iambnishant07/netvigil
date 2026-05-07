@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse, ws } from 'msw';
 import type { components } from '@netvigil/shared-types';
 
 const BASE = 'http://localhost:8000/api/v1';
@@ -175,7 +175,14 @@ const SEED: Incident[] = [
 
 let store = [...SEED];
 
+const incidentStream = ws.link(`${BASE.replace(/^http/, 'ws')}/incidents/stream`);
+
+export const incidentStreamHandler = incidentStream.addEventListener('connection', () => {
+  // Accept connection silently — tests don't exercise live push
+});
+
 export const incidentHandlers = [
+  incidentStreamHandler,
   http.get(`${BASE}/incidents`, ({ request }) => {
     const url = new URL(request.url);
     const severity = url.searchParams.get('severity');

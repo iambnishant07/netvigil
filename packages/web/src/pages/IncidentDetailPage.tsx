@@ -165,9 +165,17 @@ export default function IncidentDetailPage() {
         </Card>
       )}
 
+      {/* AI narrative */}
+      {incident.narrative && (
+        <Card>
+          <h2 className="mb-2 text-sm font-semibold text-slate-300">AI Narrative</h2>
+          <p className="text-sm leading-relaxed text-slate-300">{incident.narrative}</p>
+        </Card>
+      )}
+
       {/* Edit form */}
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-slate-300">Edit incident</h2>
+        <h2 className="mb-4 text-sm font-semibold text-slate-300">Update status</h2>
         <form onSubmit={handleUpdate} className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Select
@@ -200,7 +208,7 @@ export default function IncidentDetailPage() {
           {updateMutation.isError && <ErrorAlert message={(updateMutation.error as Error).message} />}
           {updateMutation.isSuccess && <p className="text-sm text-green-400">Saved.</p>}
           <Button type="submit" loading={updateMutation.isPending} disabled={!isDirty}>
-            Save changes
+            Save status
           </Button>
         </form>
       </Card>
