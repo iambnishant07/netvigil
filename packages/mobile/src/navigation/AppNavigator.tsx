@@ -1,5 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import DashboardScreen from '../screens/DashboardScreen';
 import IncidentsScreen from '../screens/IncidentsScreen';
 import IncidentDetailScreen from '../screens/IncidentDetailScreen';
@@ -52,22 +53,60 @@ function SettingsNavigator() {
   );
 }
 
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+
+function tabIcon(active: IoniconsName, inactive: IoniconsName) {
+  return ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+    <Ionicons name={focused ? active : inactive} size={size} color={color} />
+  );
+}
+
 const TAB_OPTS = {
-  tabBarStyle:             { backgroundColor: '#1e293b', borderTopColor: '#334155' },
+  tabBarStyle: {
+    backgroundColor: '#1e293b',
+    borderTopColor: '#334155',
+    paddingBottom: 4,
+    height: 60,
+  },
   tabBarActiveTintColor:   '#6366f1',
   tabBarInactiveTintColor: '#64748b',
+  tabBarLabelStyle: { fontSize: 11, marginBottom: 2 },
   ...HEADER,
 };
 
 export default function AppNavigator() {
   return (
     <Tab.Navigator screenOptions={TAB_OPTS}>
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Incidents" component={IncidentsNavigator} options={{ headerShown: false }} />
-      <Tab.Screen name="Map"       component={MapScreen}          options={{ title: 'Threat Map' }} />
-      <Tab.Screen name="Devices"   component={DevicesScreen} />
-      <Tab.Screen name="Rules"     component={AlertRulesScreen}   options={{ title: 'Alert Rules' }} />
-      <Tab.Screen name="Settings"  component={SettingsNavigator}  options={{ headerShown: false }} />
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{ tabBarIcon: tabIcon('grid', 'grid-outline') }}
+      />
+      <Tab.Screen
+        name="Incidents"
+        component={IncidentsNavigator}
+        options={{ headerShown: false, tabBarIcon: tabIcon('warning', 'warning-outline') }}
+      />
+      <Tab.Screen
+        name="Map"
+        component={MapScreen}
+        options={{ title: 'Threat Map', tabBarIcon: tabIcon('map', 'map-outline') }}
+      />
+      <Tab.Screen
+        name="Devices"
+        component={DevicesScreen}
+        options={{ tabBarIcon: tabIcon('hardware-chip', 'hardware-chip-outline') }}
+      />
+      <Tab.Screen
+        name="Rules"
+        component={AlertRulesScreen}
+        options={{ title: 'Alert Rules', tabBarIcon: tabIcon('notifications', 'notifications-outline') }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsNavigator}
+        options={{ headerShown: false, tabBarIcon: tabIcon('settings', 'settings-outline') }}
+      />
     </Tab.Navigator>
   );
 }
