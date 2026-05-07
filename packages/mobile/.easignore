@@ -1,0 +1,59 @@
+# Paths are relative to the git root (C:\Users\iambn)
+# EAS scans from there, so we must exclude the Windows home dir junk
+AppData/
+Application Data/
+Cookies/
+Local Settings/
+My Documents/
+NetHood/
+PrintHood/
+Recent/
+SendTo/
+Start Menu/
+Templates/
+NTUSER*
+ntuser*
+*.hprof
+.AltairRapidMiner/
+.VirtualBox/
+.android/
+.cache/
+.cagent/
+.chocolatey/
+.claude.json
+.claude/
+.config/
+.copilot/
+.cursor/
+.docker/
+.dotnet/
+.emulator_console_auth_token
+.expo/
+.ghcp-appmod/
+.gradle/
+.imibrowser/
+.jbr/
+.jdks/
+.lesshst
+.local/
+.node_repl_history
+.packettracer
+.railway/
+.redhat/
+.skiko/
+.snmp/
+.viminfo
+.vscode-shared/
+.vscode/
+AndroidStudioProjects/
+Apple/
+Contacts/
+Downloads/
+Favorites/
+Links/
+Music/
+OneDrive/
+Saved Games/
+Searches/
+Videos/
+VirtualBox VMs/
