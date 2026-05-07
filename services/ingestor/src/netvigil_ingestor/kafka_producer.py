@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import ssl
 from typing import Any
 
 from aiokafka import AIOKafkaProducer
@@ -25,6 +26,7 @@ async def start() -> None:
         kwargs["sasl_mechanism"] = settings.kafka_sasl_mechanism
         kwargs["sasl_plain_username"] = settings.kafka_sasl_username
         kwargs["sasl_plain_password"] = settings.kafka_sasl_password
+        kwargs["ssl_context"] = ssl.create_default_context()
     _producer = AIOKafkaProducer(**kwargs)
     await _producer.start()
 
