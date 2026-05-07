@@ -51,6 +51,7 @@ async def _process(
     await writer.write_flow_metric(record, device_id)
 
     score, label, top_features = ensemble.score(record)
+    log.info("Scored record: score=%.3f label=%s org=%s", score, label, org_id)
     tech      = mitre.get_technique(label)
     severity  = mitre.score_to_severity(score, label)
     narr      = await narrative.generate(
