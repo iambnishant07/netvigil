@@ -48,12 +48,17 @@ export default function SettingsScreen({ navigation }: Props) {
       return;
     }
     try {
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId as string;
+      const projectId: string =
+        (Constants.expoConfig?.extra?.eas?.projectId as string | undefined) ??
+        (Constants.easConfig?.projectId as string | undefined) ??
+        'a81c625a-08ba-4f88-8b49-7d1630c242e9';
       const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
       setPushToken(tokenData.data);
       await apiClient.put<void>('/auth/me/push-token', { pushToken: tokenData.data });
-    } catch {
-      Alert.alert('Error', 'Could not retrieve push token. Use a physical device for push notifications.');
+      Alert.alert('Success', 'Push notifications enabled.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      Alert.alert('Push token error', msg);
     }
   }
 
