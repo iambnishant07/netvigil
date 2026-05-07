@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    database_url:      str = ""
     postgres_host:     str = "localhost"
     postgres_port:     int = 5432
     postgres_db:       str = "netvigil"
@@ -11,6 +12,10 @@ class Settings(BaseSettings):
     postgres_password: str = "devpassword"
 
     kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_security_protocol: str = "PLAINTEXT"
+    kafka_sasl_mechanism:    str = "PLAIN"
+    kafka_sasl_username:     str = ""
+    kafka_sasl_password:     str = ""
 
     syslog_host:  str = "0.0.0.0"
     syslog_port:  int = 514
@@ -21,6 +26,8 @@ class Settings(BaseSettings):
 
     @property
     def asyncpg_dsn(self) -> str:
+        if self.database_url:
+            return self.database_url.replace("postgres://", "postgresql://", 1)
         return (
             f"postgresql://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"

@@ -16,10 +16,16 @@ TOPIC_PCAP    = "raw.pcap"
 
 async def start() -> None:
     global _producer
-    _producer = AIOKafkaProducer(
-        bootstrap_servers=settings.kafka_bootstrap_servers,
-        value_serializer=lambda v: json.dumps(v).encode(),
-    )
+    kwargs: dict[str, Any] = {
+        "bootstrap_servers": settings.kafka_bootstrap_servers,
+        "value_serializer": lambda v: json.dumps(v).encode(),
+    }
+    if settings.kafka_security_protocol != "PLAINTEXT":
+        kwargs["security_protocol"] = settings.kafka_security_protocol
+        kwargs["sasl_mechanism"] = settings.kafka_sasl_mechanism
+        kwargs["sasl_plain_username"] = settings.kafka_sasl_username
+        kwargs["sasl_plain_password"] = settings.kafka_sasl_password
+    _producer = AIOKafkaProducer(**kwargs)
     await _producer.start()
 
 
