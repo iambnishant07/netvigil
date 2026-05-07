@@ -2,18 +2,29 @@ import { useState, useEffect } from 'react';
 import { View, Text, Switch, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/auth-context';
 import { apiClient } from '../lib/api-client';
+import type { User } from '@netvigil/shared-types';
 import type { SettingsStackParamList } from '../navigation/AppNavigator';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'SettingsHome'>;
 
 export default function SettingsScreen({ navigation }: Props) {
-  const { user, biometricEnabled, setBiometric, logout } = useAuth();
+  const { user: storedUser, biometricEnabled, setBiometric, logout } = useAuth();
   const [pushToken,   setPushToken]   = useState<string | null>(null);
   const [hasHardware, setHasHardware] = useState(false);
   const [loggingOut,  setLoggingOut]  = useState(false);
+
+  // Always fetch fresh user data so mfaEnrolled reflects the real DB state
+  const { data: freshUser } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: () => apiClient.get<User>('/auth/me'),
+    staleTime: 0,
+  });
+
+  const user = freshUser ?? storedUser;
 
   useEffect(() => {
     void LocalAuthentication.hasHardwareAsync().then(setHasHardware);
