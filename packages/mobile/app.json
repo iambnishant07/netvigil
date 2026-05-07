@@ -23,12 +23,7 @@
       "expo-local-authentication",
       "expo-notifications",
       "expo-web-browser",
-      [
-        "@rnmapbox/maps",
-        {
-          "RNMapboxMapsDownloadToken": "MAPBOX_SECRET_DOWNLOAD_TOKEN"
-        }
-      ]
+      "@rnmapbox/maps"
     ],
     "extra": {
       "eas": {
