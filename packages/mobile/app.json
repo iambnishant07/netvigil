@@ -13,7 +13,11 @@
       "adaptiveIcon": {
         "backgroundColor": "#1e293b"
       },
-      "package": "au.edu.vu.netvigil"
+      "package": "au.edu.vu.netvigil",
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "plugins": [
       "expo-local-authentication",
@@ -25,6 +29,11 @@
           "RNMapboxMapsDownloadToken": "MAPBOX_SECRET_DOWNLOAD_TOKEN"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a81c625a-08ba-4f88-8b49-7d1630c242e9"
+      }
+    }
   }
 }
