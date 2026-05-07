@@ -15,7 +15,7 @@ from netvigil_detector.config import settings
 log = logging.getLogger(__name__)
 
 _SEVERITY_ORDER = ["info", "low", "medium", "high", "critical"]
-_MIN_SCORE = 0.10
+_MIN_SCORE = 0.40
 
 
 async def write_incident(

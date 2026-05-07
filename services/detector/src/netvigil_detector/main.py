@@ -13,7 +13,7 @@ import ssl
 from typing import Any
 
 import asyncpg
-from aiokafka import AIOKafkaConsumer
+from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 
 from netvigil_detector import ensemble, mitre, narrative, writer
 from netvigil_detector.config import settings
@@ -22,8 +22,6 @@ from netvigil_detector.config import settings
 def _kafka_kwargs() -> dict[str, object]:
     kwargs: dict[str, object] = {
         "bootstrap_servers": settings.kafka_bootstrap_servers,
-        "value_deserializer": lambda b: json.loads(b.decode()),
-        "auto_offset_reset": "earliest",
     }
     if settings.kafka_security_protocol == "SASL_SSL":
         kwargs["security_protocol"] = "SASL_SSL"
@@ -37,11 +35,13 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 log = logging.getLogger(__name__)
 
 TOPICS = ["raw.syslog", "raw.netflow", "raw.pcap"]
+INCIDENT_TOPIC = "incidents.created"
 
 
 async def _process(
     record: dict[str, Any],
     pool: asyncpg.Pool,  # type: ignore[type-arg]
+    producer: AIOKafkaProducer,
 ) -> None:
     org_id    = record.get("org_id", "")
     device_id = record.get("device_id", "")
@@ -64,7 +64,7 @@ async def _process(
         api_key=settings.anthropic_api_key,
     )
 
-    await writer.write_incident(
+    incident_id = await writer.write_incident(
         pool=pool,
         org_id=org_id,
         device_id=device_id,
@@ -76,6 +76,24 @@ async def _process(
         narrative=narr,
         top_features=top_features,
     )
+
+    if incident_id:
+        event = {
+            "id": incident_id,
+            "organization_id": org_id,
+            "device_id": device_id,
+            "severity": severity,
+            "attack_label": label,
+            "mitre_technique": tech,
+            "anomaly_score": score,
+            "narrative": narr,
+            "source_ip": record.get("ipv4_src_addr") or record.get("src", ""),
+            "destination_ip": record.get("ipv4_dst_addr") or record.get("dst", ""),
+        }
+        await producer.send_and_wait(
+            INCIDENT_TOPIC, json.dumps(event).encode()
+        )
+        log.info("Published incident %s to %s", incident_id, INCIDENT_TOPIC)
 
 
 async def _make_pool() -> asyncpg.Pool:  # type: ignore[return]
@@ -91,9 +109,17 @@ async def main() -> None:
 
     pool: asyncpg.Pool = await _make_pool()  # type: ignore[type-arg]
 
+    producer = AIOKafkaProducer(
+        value_serializer=lambda v: v if isinstance(v, bytes) else v,
+        **_kafka_kwargs(),
+    )
+    await producer.start()
+
     consumer = AIOKafkaConsumer(
         *TOPICS,
         group_id=settings.kafka_consumer_group,
+        value_deserializer=lambda b: json.loads(b.decode()),
+        auto_offset_reset="earliest",
         **_kafka_kwargs(),
     )
     await consumer.start()
@@ -102,11 +128,12 @@ async def main() -> None:
     try:
         async for msg in consumer:
             try:
-                await _process(msg.value, pool)
+                await _process(msg.value, pool, producer)
             except Exception as exc:
                 log.exception("Error processing message: %s", exc)
     finally:
         await consumer.stop()
+        await producer.stop()
         await pool.close()
 
 
