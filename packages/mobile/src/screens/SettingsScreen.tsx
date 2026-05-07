@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, Switch, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as LocalAuthentication from 'expo-local-authentication';
+import Constants from 'expo-constants';
 import { useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/auth-context';
@@ -47,7 +48,8 @@ export default function SettingsScreen({ navigation }: Props) {
       return;
     }
     try {
-      const tokenData = await Notifications.getExpoPushTokenAsync();
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId as string;
+      const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
       setPushToken(tokenData.data);
       await apiClient.put<void>('/auth/me/push-token', { pushToken: tokenData.data });
     } catch {
