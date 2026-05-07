@@ -5,17 +5,17 @@ ENV PYTHONUNBUFFERED=1
 
 RUN pip install --no-cache-dir uv
 
-# Install all project dependencies without building the package itself.
-# --no-install-project: only deps, not the project — this layer caches unless
-#   pyproject.toml changes.
-# --extra-index-url: lets uv resolve torch to the CPU-only wheel instead of
-#   pulling CUDA transitive deps (nvidia-nccl-cu12 etc.) from PyPI.
+# Stub lets hatchling discover the package so uv can install all deps
+# without the real source. Layer only re-runs when pyproject.toml changes.
+# --extra-index-url prevents uv from pulling CUDA transitive deps for torch.
 COPY pyproject.toml ./
-RUN uv pip install --system --no-install-project \
+RUN mkdir -p src/netvigil_detector && \
+    printf '__version__ = "0.0.0"\n' > src/netvigil_detector/__init__.py
+RUN uv pip install --system \
     --extra-index-url https://download.pytorch.org/whl/cpu \
     .
 
-# Copy real source and install only the project package — deps already cached
+# Overwrite stub with real source; reinstall project only (deps already cached)
 COPY src ./src
 RUN uv pip install --system --no-deps .
 

@@ -6,7 +6,9 @@ ENV PYTHONUNBUFFERED=1
 RUN pip install --no-cache-dir uv
 
 COPY pyproject.toml ./
-RUN uv pip install --system --no-install-project .
+RUN mkdir -p src/netvigil_dispatcher && \
+    printf '__version__ = "0.0.0"\n' > src/netvigil_dispatcher/__init__.py
+RUN uv pip install --system .
 
 COPY src ./src
 RUN uv pip install --system --no-deps .
