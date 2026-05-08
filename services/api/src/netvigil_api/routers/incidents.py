@@ -2,22 +2,27 @@ from __future__ import annotations
 
 import asyncio
 import json
+from typing import Annotated, Any
 
 import asyncpg
 from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 
 from netvigil_api import database as db
 from netvigil_api.config import settings
-from netvigil_api.deps import CurrentUser
+from netvigil_api.deps import CurrentUser, require_permission
+from netvigil_api.permissions import ROLE_PERMISSIONS
 from netvigil_api.repositories import incidents as inc_repo
 from netvigil_api.schemas.incidents import IncidentList, IncidentOut, IncidentPatch
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
+_ReadIncident = Annotated[dict[str, Any], require_permission("incidents:read")]
+_AckIncident  = Annotated[dict[str, Any], require_permission("incidents:acknowledge")]
+
 
 @router.get("", response_model=IncidentList, response_model_by_alias=True)
 async def list_incidents(
-    current_user: CurrentUser,
+    current_user: _ReadIncident,
     severity: str | None = Query(default=None),
     status_filter: str | None = Query(default=None, alias="status"),
     device_id: str | None = Query(default=None),
@@ -59,7 +64,7 @@ async def incident_stream(websocket: WebSocket) -> None:
 
 
 @router.get("/{incident_id}", response_model=IncidentOut, response_model_by_alias=True)
-async def get_incident(incident_id: str, current_user: CurrentUser) -> IncidentOut:
+async def get_incident(incident_id: str, current_user: _ReadIncident) -> IncidentOut:
     async with db.get_connection() as conn:
         incident = await inc_repo.get_incident(conn, current_user["org"], incident_id)
     if not incident:
@@ -69,14 +74,23 @@ async def get_incident(incident_id: str, current_user: CurrentUser) -> IncidentO
 
 @router.patch("/{incident_id}", response_model=IncidentOut, response_model_by_alias=True)
 async def patch_incident(
-    incident_id: str, body: IncidentPatch, current_user: CurrentUser
+    incident_id: str, body: IncidentPatch, current_user: _AckIncident,
 ) -> IncidentOut:
-    valid_statuses = {"open", "acknowledged", "confirmed", "false_positive"}
+    valid_statuses   = {"open", "acknowledged", "confirmed", "false_positive"}
     valid_severities = {"info", "low", "medium", "high", "critical"}
     if body.status is not None and body.status not in valid_statuses:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status")
     if body.severity is not None and body.severity not in valid_severities:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid severity")
+
+    # Severity or narrative changes require a higher permission level
+    if (body.severity is not None or body.narrative is not None) and \
+            "incidents:write" not in ROLE_PERMISSIONS.get(current_user["role"], frozenset()):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "forbidden", "message": "Requires permission: incidents:write"},
+        )
+
     async with db.get_connection() as conn:
         incident = await inc_repo.patch_incident(
             conn, current_user["org"], incident_id,
