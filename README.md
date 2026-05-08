@@ -246,11 +246,13 @@ Interactive docs at `/docs` (Swagger UI) and `/redoc` on any running API instanc
 |-------------|--------|
 | Architecture & OpenAPI spec | ✅ Complete |
 | Web dashboard (≥ 80% MVP) | ✅ Deployed to Vercel |
-| Mobile app (≥ 80% MVP) | ✅ Running on Expo Go |
+| Mobile app (≥ 80% MVP, biometric + push) | ✅ APK on EAS / Expo Go |
 | Syslog / NetFlow / pcap ingestor | ✅ Implemented |
 | AI ensemble (IF + AE + XGBoost) | ✅ Implemented |
 | LLM narrative (Claude API + fallback) | ✅ Implemented |
-| Alert dispatcher (email / SMS / push) | ✅ Implemented |
-| Backend test coverage ≥ 70% | ✅ ~78% |
+| Alert dispatcher (email / SMS / push) | ✅ FCM V1 push confirmed |
+| RBAC (8 roles × 13 permissions) | ✅ API + web + mobile |
+| Audit trail | ✅ Immutable audit_logs table + web page |
+| Backend test coverage ≥ 70% | ✅ 81.72% (68 tests) |
 | Frontend test coverage ≥ 60% | ✅ Passing |
-| Cloud deployment (staging) | ✅ Railway + Vercel |
+| Cloud deployment (staging) | ✅ Railway (API/workers) + Vercel (web) |
