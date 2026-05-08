@@ -17,4 +17,10 @@ export const qk = {
   alertRules: {
     list: () => ['alert-rules', 'list'] as const,
   },
+  users: {
+    list: () => ['users', 'list'] as const,
+  },
+  auditLogs: {
+    list: (page: number) => ['audit-logs', 'list', page] as const,
+  },
 } as const;

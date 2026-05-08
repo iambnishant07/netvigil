@@ -8,6 +8,8 @@ import IncidentsPage from './pages/IncidentsPage.tsx';
 import IncidentDetailPage from './pages/IncidentDetailPage.tsx';
 import DevicesPage from './pages/DevicesPage.tsx';
 import AlertRulesPage from './pages/AlertRulesPage.tsx';
+import TeamPage from './pages/TeamPage.tsx';
+import AuditLogPage from './pages/AuditLogPage.tsx';
 
 export const router = createBrowserRouter([
   { path: '/login',    element: <LoginPage /> },
@@ -24,6 +26,8 @@ export const router = createBrowserRouter([
           { path: '/incidents/:id',    element: <IncidentDetailPage /> },
           { path: '/devices',          element: <DevicesPage /> },
           { path: '/alert-rules',      element: <AlertRulesPage /> },
+          { path: '/team',             element: <TeamPage /> },
+          { path: '/audit-log',        element: <AuditLogPage /> },
         ],
       },
     ],

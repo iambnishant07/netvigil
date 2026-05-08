@@ -1,4 +1,23 @@
+import type { ReactNode } from 'react';
 import type { Severity, IncidentStatus } from '@netvigil/shared-types';
+
+const COLOR_CLS: Record<string, string> = {
+  red:    'bg-red-900 text-red-300',
+  yellow: 'bg-yellow-900 text-yellow-300',
+  blue:   'bg-indigo-900 text-indigo-300',
+  green:  'bg-emerald-900 text-emerald-300',
+  gray:   'bg-slate-700 text-slate-300',
+};
+
+interface BadgeProps { color?: 'red' | 'yellow' | 'blue' | 'green' | 'gray'; children: ReactNode }
+
+export function Badge({ color = 'gray', children }: BadgeProps) {
+  return (
+    <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${COLOR_CLS[color]}`}>
+      {children}
+    </span>
+  );
+}
 
 const SEVERITY_CLS: Record<Severity, string> = {
   info:     'bg-slate-600 text-slate-100',

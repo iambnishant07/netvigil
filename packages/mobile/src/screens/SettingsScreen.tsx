@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/auth-context';
 import { apiClient } from '../lib/api-client';
+import { formatRole, ROLE_PERMISSIONS } from '../lib/permissions';
 import type { User } from '@netvigil/shared-types';
 import type { SettingsStackParamList } from '../navigation/AppNavigator';
 
@@ -75,6 +76,21 @@ export default function SettingsScreen({ navigation }: Props) {
         <View style={styles.card}>
           <Text style={styles.emailLabel}>Signed in as</Text>
           <Text style={styles.email}>{user?.email ?? '—'}</Text>
+          <View style={styles.roleRow}>
+            <Text style={styles.roleLabel}>Role</Text>
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleBadgeText}>
+                {user?.role ? formatRole(user.role) : '—'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.permissionsWrap}>
+            {(ROLE_PERMISSIONS[user?.role ?? ''] ?? []).map((p) => (
+              <View key={p} style={styles.permPill}>
+                <Text style={styles.permPillText}>{p}</Text>
+              </View>
+            ))}
+          </View>
         </View>
       </View>
 
@@ -187,6 +203,13 @@ const styles = StyleSheet.create({
   tokenContainer:     { paddingHorizontal: 16, paddingBottom: 16 },
   tokenLabel:         { fontSize: 11, color: '#64748b', marginBottom: 4 },
   tokenText:          { fontSize: 11, fontFamily: 'monospace', color: '#818cf8', backgroundColor: '#0f172a', padding: 10, borderRadius: 6 },
+  roleRow:            { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8 },
+  roleLabel:          { fontSize: 12, color: '#64748b' },
+  roleBadge:          { backgroundColor: '#312e81', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 3 },
+  roleBadgeText:      { fontSize: 12, color: '#a5b4fc', fontWeight: '600' },
+  permissionsWrap:    { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, paddingBottom: 12, gap: 6 },
+  permPill:           { backgroundColor: '#1e3a5f', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
+  permPillText:       { fontSize: 10, color: '#7dd3fc', fontFamily: 'monospace' },
   logoutBtn:          { backgroundColor: '#1e293b', borderRadius: 12, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#7f1d1d' },
   logoutBtnDisabled:  { opacity: 0.6 },
   logoutText:         { color: '#f87171', fontWeight: '600', fontSize: 16 },
