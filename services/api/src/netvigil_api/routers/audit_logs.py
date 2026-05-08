@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Query
@@ -38,7 +39,7 @@ async def list_audit_logs(
             actor_email=r["actor_email"],
             action=r["action"],
             target_id=r["target_id"],
-            metadata=dict(r["metadata"]) if r["metadata"] else {},
+            metadata=json.loads(r["metadata"]) if isinstance(r["metadata"], str) else (r["metadata"] or {}),
             created_at=r["created_at"].isoformat(),
         )
         for r in rows

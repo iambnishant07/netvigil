@@ -77,8 +77,9 @@ async def clean_db(pg_pool: asyncpg.Pool) -> None:  # type: ignore[type-arg]
     yield
     async with pg_pool.acquire() as conn:
         await conn.execute(
-            "DELETE FROM alert_rules; DELETE FROM incidents; DELETE FROM devices; "
-            "DELETE FROM refresh_tokens; DELETE FROM users; DELETE FROM organizations;"
+            "DELETE FROM audit_logs; DELETE FROM alert_rules; DELETE FROM incidents; "
+            "DELETE FROM devices; DELETE FROM refresh_tokens; DELETE FROM users; "
+            "DELETE FROM organizations;"
         )
 
 

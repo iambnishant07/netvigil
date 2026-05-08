@@ -19,7 +19,7 @@ async def log_action(
 ) -> None:
     await conn.execute(
         """INSERT INTO audit_logs(id, organization_id, actor_id, action, target_id, metadata)
-           VALUES($1, $2::uuid, $3::uuid, $4, $5, $6)""",
+           VALUES($1, $2::uuid, $3::uuid, $4, $5, $6::jsonb)""",
         str(uuid7()), org_id, actor_id, action, target_id,
         json.dumps(metadata or {}),
     )
