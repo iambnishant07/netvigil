@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, HTTPException, status
 
 from netvigil_api import database as db
 from netvigil_api.audit import log_action
-from netvigil_api.deps import SuperAdmin
+from netvigil_api.deps import CurrentUser, SuperAdmin
 from netvigil_api.schemas.users import AdminOrgOut, AdminOrgPatch, AdminUserOut, AdminUserPatch
+
+_EXPO_URL = "https://exp.host/--/api/v2/push/send"
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -191,6 +194,30 @@ async def patch_any_user(
         mfa_enrolled=updated["mfa_enrolled"],
         created_at=updated["created_at"].isoformat(),
     )
+
+
+@router.post("/test-push", status_code=status.HTTP_200_OK)
+async def send_test_push(current_user: CurrentUser) -> dict[str, str]:
+    async with db.get_connection() as conn:
+        token: str | None = await conn.fetchval(
+            "SELECT expo_push_token FROM users WHERE id = $1::uuid",
+            current_user["sub"],
+        )
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No push token registered — enable notifications in the mobile app first",
+        )
+    payload = {
+        "to": token,
+        "title": "NetVigil Test",
+        "body": "Push notifications are working correctly.",
+        "data": {"type": "test"},
+    }
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.post(_EXPO_URL, json=payload)
+    result: dict[str, object] = resp.json()
+    return {"status": "sent", "expo_response": str(result)}
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
