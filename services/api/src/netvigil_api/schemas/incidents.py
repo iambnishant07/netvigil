@@ -31,6 +31,18 @@ class IncidentList(CamelModel):
     total: int
 
 
+class IncidentCreate(CamelModel):
+    device_id: str
+    severity: str
+    attack_label: str
+    mitre_technique: str
+    source_ip: str
+    destination_ip: str
+    anomaly_score: float
+    narrative: str | None = None
+    detected_at: str | None = None
+
+
 class IncidentPatch(CamelModel):
     status: str | None = None
     severity: str | None = None

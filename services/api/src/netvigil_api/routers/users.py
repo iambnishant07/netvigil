@@ -64,11 +64,22 @@ async def patch_user(
 
     async with db.get_connection() as conn:
         existing = await conn.fetchrow(
-            "SELECT id FROM users WHERE id = $1::uuid AND organization_id = $2::uuid",
+            "SELECT id, role FROM users WHERE id = $1::uuid AND organization_id = $2::uuid",
             user_id, current_user["org"],
         )
         if not existing:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+        if existing["role"] == "super_admin" and current_user["role"] != "super_admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "forbidden", "message": "Cannot modify a super_admin account"},
+            )
+        if body.role == "super_admin" and current_user["role"] != "super_admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "forbidden", "message": "Cannot assign the super_admin role"},
+            )
 
         sets: list[str] = []
         vals: list[Any] = []

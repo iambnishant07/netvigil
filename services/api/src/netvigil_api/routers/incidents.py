@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from typing import Annotated, Any
 
 import asyncpg
@@ -9,15 +8,57 @@ from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconn
 
 from netvigil_api import database as db
 from netvigil_api.config import settings
-from netvigil_api.deps import CurrentUser, require_permission
+from netvigil_api.deps import require_permission
 from netvigil_api.permissions import ROLE_PERMISSIONS
 from netvigil_api.repositories import incidents as inc_repo
-from netvigil_api.schemas.incidents import IncidentList, IncidentOut, IncidentPatch
+from netvigil_api.schemas.incidents import IncidentCreate, IncidentList, IncidentOut, IncidentPatch
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
-_ReadIncident = Annotated[dict[str, Any], require_permission("incidents:read")]
-_AckIncident  = Annotated[dict[str, Any], require_permission("incidents:acknowledge")]
+_ReadIncident  = Annotated[dict[str, Any], require_permission("incidents:read")]
+_AckIncident   = Annotated[dict[str, Any], require_permission("incidents:acknowledge")]
+_WriteIncident = Annotated[dict[str, Any], require_permission("incidents:write")]
+
+
+@router.post(
+    "",
+    response_model=IncidentOut,
+    response_model_by_alias=True,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_incident(
+    body: IncidentCreate, current_user: _WriteIncident,
+) -> IncidentOut:
+    valid_severities = {"info", "low", "medium", "high", "critical"}
+    if body.severity not in valid_severities:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid severity",
+        )
+    if not 0.0 <= body.anomaly_score <= 1.0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="anomaly_score must be between 0 and 1",
+        )
+
+    async with db.get_connection() as conn:
+        incident = await inc_repo.create_incident(
+            conn, current_user["org"],
+            device_id=body.device_id,
+            severity=body.severity,
+            attack_label=body.attack_label,
+            mitre_technique=body.mitre_technique,
+            source_ip=body.source_ip,
+            destination_ip=body.destination_ip,
+            anomaly_score=body.anomaly_score,
+            narrative=body.narrative,
+            detected_at=body.detected_at,
+        )
+    if not incident:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Device not found in this organisation",
+        )
+    return IncidentOut(**incident)
 
 
 @router.get("", response_model=IncidentList, response_model_by_alias=True)
@@ -56,7 +97,7 @@ async def incident_stream(websocket: WebSocket) -> None:
         while True:
             payload = await asyncio.wait_for(queue.get(), timeout=30.0)
             await websocket.send_text(payload)
-    except (asyncio.TimeoutError, WebSocketDisconnect):
+    except (TimeoutError, WebSocketDisconnect):
         pass
     finally:
         await conn.remove_listener("incidents_changed", _on_notify)  # type: ignore[arg-type]

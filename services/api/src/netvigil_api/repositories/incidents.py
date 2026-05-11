@@ -4,6 +4,8 @@ import json
 
 import asyncpg
 
+from netvigil_api.security import uuid7
+
 
 def _row_to_dict(row: asyncpg.Record) -> dict:  # type: ignore[type-arg]
     d = dict(row)
@@ -104,6 +106,35 @@ async def patch_incident(
         f"UPDATE incidents SET {', '.join(sets)}"
         f" WHERE id = ${idx}::uuid AND organization_id = ${idx+1}::uuid RETURNING *",
         *params,
+    )
+    return _row_to_dict(row) if row else None  # type: ignore[arg-type]
+
+
+async def create_incident(
+    conn: asyncpg.Connection,  # type: ignore[type-arg]
+    org_id: str,
+    device_id: str,
+    severity: str,
+    attack_label: str,
+    mitre_technique: str,
+    source_ip: str,
+    destination_ip: str,
+    anomaly_score: float,
+    narrative: str | None,
+    detected_at: str | None,
+) -> dict | None:  # type: ignore[type-arg]
+    await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", org_id)
+    incident_id = str(uuid7())
+    row = await conn.fetchrow(
+        """INSERT INTO incidents
+           (id, organization_id, device_id, detected_at, severity, attack_label,
+            mitre_technique, source_ip, destination_ip, anomaly_score, narrative, top_features)
+           VALUES ($1::uuid, $2::uuid, $3::uuid, COALESCE($4::timestamptz, now()),
+                   $5, $6, $7, $8, $9, $10, $11, '[]'::jsonb)
+           RETURNING *""",
+        incident_id, org_id, device_id, detected_at,
+        severity, attack_label, mitre_technique, source_ip, destination_ip,
+        anomaly_score, narrative,
     )
     return _row_to_dict(row) if row else None  # type: ignore[arg-type]
 

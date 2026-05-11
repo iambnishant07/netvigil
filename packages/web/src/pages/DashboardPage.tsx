@@ -72,14 +72,14 @@ export default function DashboardPage() {
 
   const severityChartData = kpis
     ? (['critical', 'high', 'medium', 'low', 'info'] as const).map((s) => ({
-        name: s,
-        count: kpis.openIncidentsBySeverity[s],
+        name:  s.charAt(0).toUpperCase() + s.slice(1),
+        key:   s,
+        count: kpis.openIncidentsBySeverity[s] ?? 0,
       }))
     : [];
 
-  const totalOpen = kpis
-    ? Object.values(kpis.openIncidentsBySeverity).reduce((a, b) => a + b, 0)
-    : 0;
+  const totalOpen = severityChartData.reduce((a, d) => a + d.count, 0);
+  const chartEmpty = severityChartData.every((d) => d.count === 0);
 
   if (kpisLoading) {
     return (
@@ -127,22 +127,29 @@ export default function DashboardPage() {
         {/* Severity breakdown chart */}
         <Card>
           <h2 className="mb-4 text-sm font-semibold text-slate-300">Open incidents by severity</h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={severityChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6 }}
-                labelStyle={{ color: '#e2e8f0' }}
-                itemStyle={{ color: '#cbd5e1' }}
-              />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                {severityChartData.map((entry) => (
-                  <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {chartEmpty ? (
+            <div className="flex h-[200px] items-center justify-center text-sm text-slate-500">
+              No open incidents
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={severityChartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6 }}
+                  labelStyle={{ color: '#e2e8f0' }}
+                  itemStyle={{ color: '#cbd5e1' }}
+                  cursor={{ fill: 'rgba(148,163,184,0.08)' }}
+                />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                  {severityChartData.map((entry) => (
+                    <Cell key={entry.key} fill={SEVERITY_COLORS[entry.key]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </Card>
 
         {/* Recent incidents */}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '../lib/query-keys.ts';
 import { apiClient } from '../lib/api-client.ts';
-import { usePermission } from '../lib/permissions.ts';
+import { usePermission, useRole } from '../lib/permissions.ts';
 import { Spinner } from '../components/ui/Spinner.tsx';
 import { ErrorAlert } from '../components/ui/ErrorAlert.tsx';
 import { Badge } from '../components/ui/Badge.tsx';
@@ -29,8 +29,9 @@ type Tab = 'active' | 'pending';
 
 export default function TeamPage() {
   const queryClient = useQueryClient();
-  const canWrite   = usePermission('users:write');
-  const canApprove = usePermission('users:approve');
+  const canWrite    = usePermission('users:write');
+  const canApprove  = usePermission('users:approve');
+  const currentRole = useRole();
   const [tab,       setTab]       = useState<Tab>('active');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [roleEdit,  setRoleEdit]  = useState<string>('');
@@ -142,7 +143,7 @@ export default function TeamPage() {
                         onChange={(e) => setRoleEdit(e.target.value)}
                         className="rounded bg-slate-900 border border-slate-600 text-slate-200 text-xs px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       >
-                        {ROLES.map((r) => (
+                        {ROLES.filter((r) => r !== 'super_admin' || currentRole === 'super_admin').map((r) => (
                           <option key={r} value={r}>{formatRole(r)}</option>
                         ))}
                       </select>
@@ -159,7 +160,10 @@ export default function TeamPage() {
                   </td>
                   {canWrite && (
                     <td className="px-4 py-3 text-right">
-                      {editingId === u.id ? (
+                      {/* super_admin accounts are read-only for non-super_admins */}
+                      {u.role === 'super_admin' && currentRole !== 'super_admin' ? (
+                        <span className="text-xs text-slate-600 italic">Protected</span>
+                      ) : editingId === u.id ? (
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
