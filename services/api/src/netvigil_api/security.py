@@ -115,6 +115,30 @@ def decode_mfa_token(token: str) -> str:
         raise ValueError("Invalid MFA token") from exc
 
 
+def create_google_session_token(google_sub: str, email: str) -> str:
+    """Short-lived (10 min) JWT proving Google identity while org/role selection is pending."""
+    now = int(time.time())
+    payload: dict[str, Any] = {
+        "sub":   google_sub,
+        "email": email,
+        "typ":   "google_session",
+        "jti":   str(uuid7()),
+        "iat":   now,
+        "exp":   now + 600,
+    }
+    return jwt.encode(payload, settings.private_key_pem(), algorithm="RS256")
+
+
+def decode_google_session_token(token: str) -> dict[str, str]:
+    try:
+        payload = jwt.decode(token, settings.public_key_pem(), algorithms=["RS256"])
+        if payload.get("typ") != "google_session":
+            raise ValueError("Not a Google session token")
+        return {"google_sub": str(payload["sub"]), "email": str(payload["email"])}
+    except JWTError as exc:
+        raise ValueError("Invalid Google session token") from exc
+
+
 # ── Shared device secret ──────────────────────────────────────────────────────
 
 def generate_device_secret() -> tuple[str, str]:

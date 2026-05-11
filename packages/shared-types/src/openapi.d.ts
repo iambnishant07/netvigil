@@ -1193,6 +1193,9 @@ export interface components {
             /** @default false */
             mfaRequired: boolean;
             mfaToken?: string | null;
+            needsOrgSelection?: boolean;
+            googleSessionToken?: string | null;
+            googleEmail?: string | null;
         };
         /** @enum {string} */
         UserRole: "super_admin" | "admin" | "senior_analyst" | "analyst" | "threat_hunter" | "forensic_investigator" | "auditor" | "developer";

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from urllib.parse import urlencode
+
 import httpx
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from urllib.parse import urlencode
 
 from netvigil_api import database as db
 from netvigil_api.config import settings
@@ -13,6 +14,7 @@ from netvigil_api.repositories import auth as auth_repo
 from netvigil_api.schemas.auth import (
     AuthResponse,
     GoogleAuthRequest,
+    GoogleCompleteRequest,
     LoginRequest,
     MfaChallengeRequest,
     MfaDisableRequest,
@@ -24,7 +26,9 @@ from netvigil_api.schemas.auth import (
 )
 from netvigil_api.security import (
     create_access_token,
+    create_google_session_token,
     create_mfa_token,
+    decode_google_session_token,
     decode_mfa_token,
     generate_refresh_token,
     generate_totp_secret,
@@ -221,12 +225,12 @@ async def mfa_challenge(body: MfaChallengeRequest) -> AuthResponse:
 
 # ── Google OAuth ──────────────────────────────────────────────────────────────
 
-@router.post("/google", response_model=AuthResponse, response_model_by_alias=True)
-async def google_auth(body: GoogleAuthRequest) -> AuthResponse:
+async def _verify_google_id_token(id_token: str) -> tuple[str, str]:
+    """Verify Google id_token and return (google_sub, email). Raises HTTPException on failure."""
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             "https://oauth2.googleapis.com/tokeninfo",
-            params={"id_token": body.id_token},
+            params={"id_token": id_token},
         )
     if resp.status_code != 200:
         raise HTTPException(
@@ -244,6 +248,12 @@ async def google_auth(body: GoogleAuthRequest) -> AuthResponse:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "invalid_google_token", "message": "Token audience mismatch"},
         )
+    return google_sub, email
+
+
+@router.post("/google", response_model=AuthResponse, response_model_by_alias=True)
+async def google_auth(body: GoogleAuthRequest) -> AuthResponse:
+    google_sub, email = await _verify_google_id_token(body.id_token)
 
     async with db.get_connection() as conn:
         user = await auth_repo.get_user_by_google_sub(conn, google_sub)
@@ -252,11 +262,59 @@ async def google_auth(body: GoogleAuthRequest) -> AuthResponse:
             if existing:
                 await auth_repo.link_google_sub(conn, str(existing["id"]), google_sub)
                 user = await auth_repo.get_user_by_id(conn, str(existing["id"]))
-            else:
-                org = await auth_repo.create_org(conn, body.organization_name, "Australia/Brisbane")
+
+    if not user:
+        # New Google user — client must supply org/role before we create the account
+        return AuthResponse(
+            needs_org_selection=True,
+            google_session_token=create_google_session_token(google_sub, email),
+            google_email=email,
+        )
+
+    return await _issue_tokens(user)
+
+
+@router.post("/google/complete", response_model=AuthResponse, response_model_by_alias=True)
+async def google_complete(body: GoogleCompleteRequest) -> AuthResponse:
+    try:
+        session = decode_google_session_token(body.google_session_token)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "code": "invalid_google_session",
+                "message": "Google session expired or invalid",
+            },
+        ) from exc
+
+    google_sub = session["google_sub"]
+    email = session["email"]
+
+    async with db.get_connection() as conn:
+        user = await auth_repo.get_user_by_google_sub(conn, google_sub)
+        if not user:
+            existing = await auth_repo.get_user_by_email(conn, email)
+            if existing:
+                await auth_repo.link_google_sub(conn, str(existing["id"]), google_sub)
+                user = await auth_repo.get_user_by_id(conn, str(existing["id"]))
+            elif body.organization_name:
+                org = await auth_repo.create_org(
+                    conn, body.organization_name.strip(), body.timezone
+                )
                 user = await auth_repo.create_google_user(
                     conn, str(org["id"]), email, google_sub, role="admin", status="active",
                 )
+            else:
+                org = await auth_repo.get_org_by_id(conn, body.organization_id)  # type: ignore[arg-type]
+                if not org:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail={"code": "org_not_found", "message": "Organisation not found"},
+                    )
+                user = await auth_repo.create_google_user(
+                    conn, str(org["id"]), email, google_sub, role=body.role, status="pending",
+                )
+
     if not user:
         raise _INVALID
     return await _issue_tokens(user)
@@ -335,13 +393,12 @@ async def google_mobile_callback(
             if existing:
                 await auth_repo.link_google_sub(conn, str(existing["id"]), google_sub)
                 user = await auth_repo.get_user_by_id(conn, str(existing["id"]))
-            else:
-                org = await auth_repo.create_org(conn, email.split("@")[0], "Australia/Brisbane")
-                user = await auth_repo.create_google_user(
-                    conn, str(org["id"]), email, google_sub, role="admin", status="active",
-                )
+
     if not user:
-        return _err("user_creation_failed")
+        # New user — redirect back with a session token so the app can show org/role picker
+        session_token = create_google_session_token(google_sub, email)
+        qs = urlencode({"needs_org": "true", "google_session_token": session_token, "email": email})
+        return RedirectResponse(f"{_APP_SCHEME}://oauth-callback?{qs}")
 
     auth = await _issue_tokens(user)
     u = auth.user

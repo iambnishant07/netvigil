@@ -9,6 +9,8 @@ REGISTERABLE_ROLES = frozenset({
     "threat_hunter", "forensic_investigator", "auditor", "developer",
 })
 
+_ORG_XOR_MSG = "Provide either organizationName (create) or organizationId (join)"
+
 
 class RegisterRequest(CamelModel):
     # Exactly one of organization_name (create) or organization_id (join) must be set
@@ -72,6 +74,9 @@ class AuthResponse(CamelModel):
     user: UserOut | None = None
     mfa_required: bool = False
     mfa_token: str | None = None
+    needs_org_selection: bool = False
+    google_session_token: str | None = None
+    google_email: str | None = None
 
 
 # ── MFA ───────────────────────────────────────────────────────────────────────
@@ -97,4 +102,28 @@ class MfaDisableRequest(CamelModel):
 
 class GoogleAuthRequest(CamelModel):
     id_token: str
-    organization_name: str = "My Organisation"
+
+
+class GoogleCompleteRequest(CamelModel):
+    google_session_token: str
+    organization_name: str | None = None
+    organization_id: str | None = None
+    role: str = "analyst"
+    timezone: str = "Australia/Brisbane"
+
+    @model_validator(mode="after")
+    def org_xor(self) -> GoogleCompleteRequest:
+        has_name = bool(self.organization_name and self.organization_name.strip())
+        has_id = bool(self.organization_id and self.organization_id.strip())
+        if not has_name and not has_id:
+            raise ValueError(_ORG_XOR_MSG)
+        if has_name and has_id:
+            raise ValueError("Provide either organizationName or organizationId, not both")
+        return self
+
+    @field_validator("role")
+    @classmethod
+    def role_valid(cls, v: str) -> str:
+        if v not in REGISTERABLE_ROLES:
+            raise ValueError(f"Invalid role: {v}")
+        return v

@@ -63,6 +63,16 @@ export default function RegisterScreen({ navigation }: Props) {
       const qp = (k: string) => { const e = pairs.find(s => s.startsWith(`${k}=`)); return e ? decodeURIComponent(e.slice(k.length + 1)) : ''; };
       const err = qp('error');
       if (err) { Alert.alert('Google sign-in failed', err); return; }
+
+      // New user — backend returned a session token instead of full credentials
+      if (qp('needs_org') === 'true') {
+        navigation.navigate('GoogleOrgSelect', {
+          googleSessionToken: qp('google_session_token'),
+          email:              qp('email'),
+        });
+        return;
+      }
+
       await login({
         accessToken:  qp('access_token'),
         refreshToken: qp('refresh_token'),

@@ -19,6 +19,7 @@ const mockAuthResponse: components['schemas']['AuthResponse'] = {
   expiresIn: 900,
   user: mockUser,
   mfaRequired: false,
+  needsOrgSelection: false,
 };
 
 export const authHandlers = [

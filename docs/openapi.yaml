@@ -682,6 +682,18 @@ components:
         mfaToken:
           type: string
           nullable: true
+        needsOrgSelection:
+          type: boolean
+          default: false
+          description: True when a new Google user must select org/role before account creation
+        googleSessionToken:
+          type: string
+          nullable: true
+          description: Short-lived token proving Google identity; used with POST /auth/google/complete
+        googleEmail:
+          type: string
+          nullable: true
+          description: Email address from Google identity, shown in the org-selection step
 
     UserRole:
       type: string
