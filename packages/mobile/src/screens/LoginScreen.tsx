@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image, ScrollView,
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
@@ -120,9 +120,13 @@ export default function LoginScreen({ navigation }: Props) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.inner}>
-        <Text style={styles.title}>Sign in to NetVigil</Text>
-        <Text style={styles.subtitle}>AI-driven network threat detection</Text>
+      <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
+        <Image
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          source={require('../../assets/landing-logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
 
         <View style={styles.field}>
           <Text style={styles.label}>Email</Text>
@@ -189,14 +193,15 @@ export default function LoginScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.switchLink} onPress={() => navigation.navigate('Register')}>
           <Text style={styles.switchText}>No account? <Text style={styles.switchAction}>Create one</Text></Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container:    { flex: 1, backgroundColor: '#0f172a', justifyContent: 'center' },
-  inner:        { paddingHorizontal: 24, gap: 16 },
+  container:    { flex: 1, backgroundColor: '#0f172a' },
+  inner:        { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 40, gap: 16 },
+  logo:         { width: '100%', height: 120, marginBottom: 8 },
   title:        { fontSize: 22, fontWeight: '700', color: '#e2e8f0', textAlign: 'center' },
   subtitle:     { fontSize: 13, color: '#64748b', textAlign: 'center', marginBottom: 8 },
   field:        { gap: 4 },
