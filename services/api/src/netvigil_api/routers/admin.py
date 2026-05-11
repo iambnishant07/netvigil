@@ -191,3 +191,31 @@ async def patch_any_user(
         mfa_enrolled=updated["mfa_enrolled"],
         created_at=updated["created_at"].isoformat(),
     )
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(user_id: str, current_user: SuperAdmin) -> None:
+    async with db.get_connection() as conn:
+        row = await conn.fetchrow(
+            "SELECT id, email FROM users WHERE id = $1::uuid", user_id
+        )
+        if not row:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        if str(row["id"]) == current_user["sub"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "cannot_delete_self", "message": "Cannot delete your own account"},
+            )
+        email: str = row["email"]
+        async with conn.transaction():
+            await conn.execute("DELETE FROM refresh_tokens WHERE user_id = $1::uuid", user_id)
+            await conn.execute("DELETE FROM audit_logs WHERE actor_id = $1::uuid", user_id)
+            await conn.execute("DELETE FROM users WHERE id = $1::uuid", user_id)
+        await log_action(
+            conn,
+            actor_id=current_user["sub"],
+            org_id=current_user["org"],
+            action="admin.user.delete",
+            target_id=user_id,
+            metadata={"email": email},
+        )

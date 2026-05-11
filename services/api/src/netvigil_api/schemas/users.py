@@ -9,6 +9,9 @@ ALLOWED_ROLES = frozenset({
     "threat_hunter", "forensic_investigator", "auditor", "developer",
 })
 
+# Org-level admins cannot assign super_admin; only super_admin can via /admin endpoints
+ORG_ALLOWED_ROLES = ALLOWED_ROLES - {"super_admin"}
+
 ALLOWED_STATUSES = frozenset({"pending", "active", "rejected"})
 
 
@@ -35,7 +38,7 @@ class UserPatch(CamelModel):
     @field_validator("role")
     @classmethod
     def role_valid(cls, v: str | None) -> str | None:
-        if v is not None and v not in ALLOWED_ROLES:
+        if v is not None and v not in ORG_ALLOWED_ROLES:
             raise ValueError(f"Invalid role: {v}")
         return v
 

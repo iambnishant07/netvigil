@@ -69,6 +69,20 @@ export default function AdminPage() {
     },
   });
 
+  const deleteUser = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/admin/users/${id}`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.admin.users() });
+      void queryClient.invalidateQueries({ queryKey: qk.admin.orgs() });
+      if (selectedOrg) void queryClient.invalidateQueries({ queryKey: qk.admin.orgUsers(selectedOrg.id) });
+    },
+  });
+
+  function handleDelete(u: AdminUser) {
+    if (!window.confirm(`Permanently delete ${u.email}? This cannot be undone.`)) return;
+    deleteUser.mutate(u.id);
+  }
+
   const displayUsers = selectedOrg ? (orgUsers ?? []) : (allUsers ?? []);
   const isUsersLoading = selectedOrg ? orgUsersLoading : usersLoading;
   const usersErrDisplay = selectedOrg ? null : usersError;
@@ -261,6 +275,14 @@ export default function AdminPage() {
                             }`}
                           >
                             {u.isActive ? 'Disable' : 'Enable'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(u)}
+                            disabled={deleteUser.isPending}
+                            className="text-xs font-medium text-red-500 hover:text-red-400 disabled:opacity-50"
+                          >
+                            Delete
                           </button>
                         </div>
                       )}
