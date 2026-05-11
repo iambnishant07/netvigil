@@ -15,9 +15,11 @@ type Props = NativeStackScreenProps<SettingsStackParamList, 'SettingsHome'>;
 
 export default function SettingsScreen({ navigation }: Props) {
   const { user: storedUser, biometricEnabled, setBiometric, logout } = useAuth();
-  const [pushToken,   setPushToken]   = useState<string | null>(null);
-  const [hasHardware, setHasHardware] = useState(false);
-  const [loggingOut,  setLoggingOut]  = useState(false);
+  const [pushToken,    setPushToken]    = useState<string | null>(null);
+  const [pushEnabled,  setPushEnabled]  = useState(false);
+  const [pushLoading,  setPushLoading]  = useState(false);
+  const [hasHardware,  setHasHardware]  = useState(false);
+  const [loggingOut,   setLoggingOut]   = useState(false);
 
   // Always fetch fresh user data so mfaEnrolled reflects the real DB state
   const { data: freshUser } = useQuery({
@@ -30,6 +32,23 @@ export default function SettingsScreen({ navigation }: Props) {
 
   useEffect(() => {
     void LocalAuthentication.hasHardwareAsync().then(setHasHardware);
+
+    // Check if push permission is already granted and fetch current token
+    void (async () => {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') return;
+      setPushEnabled(true);
+      try {
+        const projectId: string =
+          (Constants.expoConfig?.extra?.eas?.projectId as string | undefined) ??
+          (Constants.easConfig?.projectId as string | undefined) ??
+          'a81c625a-08ba-4f88-8b49-7d1630c242e9';
+        const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+        setPushToken(tokenData.data);
+      } catch {
+        // Token fetch failed — permission may be granted but FCM not configured in dev
+      }
+    })();
   }, []);
 
   async function handleBiometricToggle(enabled: boolean) {
@@ -43,23 +62,28 @@ export default function SettingsScreen({ navigation }: Props) {
   }
 
   async function handlePushPermission() {
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission denied', 'Enable notifications in your device settings.');
-      return;
-    }
+    if (pushEnabled) return;
+    setPushLoading(true);
     try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Enable notifications in your device settings.');
+        return;
+      }
       const projectId: string =
         (Constants.expoConfig?.extra?.eas?.projectId as string | undefined) ??
         (Constants.easConfig?.projectId as string | undefined) ??
         'a81c625a-08ba-4f88-8b49-7d1630c242e9';
       const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
       setPushToken(tokenData.data);
+      setPushEnabled(true);
       await apiClient.put<void>('/auth/me/push-token', { pushToken: tokenData.data });
       Alert.alert('Success', 'Push notifications enabled.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       Alert.alert('Push token error', msg);
+    } finally {
+      setPushLoading(false);
     }
   }
 
@@ -155,12 +179,28 @@ export default function SettingsScreen({ navigation }: Props) {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Notifications</Text>
         <View style={styles.card}>
-          <TouchableOpacity style={styles.actionRow} onPress={handlePushPermission}>
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => void handlePushPermission()}
+            disabled={pushEnabled || pushLoading}
+          >
             <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Enable push notifications</Text>
-              <Text style={styles.settingDesc}>Required for real-time incident alerts</Text>
+              <Text style={styles.settingLabel}>Push notifications</Text>
+              <Text style={styles.settingDesc}>
+                {pushEnabled
+                  ? 'Receiving real-time incident alerts'
+                  : 'Tap to enable real-time incident alerts'}
+              </Text>
             </View>
-            <Text style={styles.actionArrow}>›</Text>
+            {pushLoading ? (
+              <ActivityIndicator size="small" color="#6366f1" />
+            ) : (
+              <View style={[styles.statusBadge, pushEnabled ? styles.statusEnabled : styles.statusDisabled]}>
+                <Text style={[styles.statusText, pushEnabled ? styles.statusTextEnabled : styles.statusTextDisabled]}>
+                  {pushEnabled ? 'Enabled' : 'Disabled'}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
           {pushToken && (
             <View style={styles.tokenContainer}>
@@ -210,6 +250,12 @@ const styles = StyleSheet.create({
   permissionsWrap:    { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, paddingBottom: 12, gap: 6 },
   permPill:           { backgroundColor: '#1e3a5f', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
   permPillText:       { fontSize: 10, color: '#7dd3fc', fontFamily: 'monospace' },
+  statusBadge:         { borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+  statusEnabled:       { backgroundColor: '#14532d' },
+  statusDisabled:      { backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155' },
+  statusText:          { fontSize: 12, fontWeight: '600' },
+  statusTextEnabled:   { color: '#4ade80' },
+  statusTextDisabled:  { color: '#64748b' },
   logoutBtn:          { backgroundColor: '#1e293b', borderRadius: 12, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#7f1d1d' },
   logoutBtnDisabled:  { opacity: 0.6 },
   logoutText:         { color: '#f87171', fontWeight: '600', fontSize: 16 },
