@@ -10,6 +10,7 @@ export const TEST_USER: User = {
   organizationId: '018e1234-0000-7000-8000-000000000000',
   email: 'test@example.com',
   role: 'admin',
+  status: 'active',
   mfaEnrolled: false,
   createdAt: '2024-01-01T00:00:00Z',
 };

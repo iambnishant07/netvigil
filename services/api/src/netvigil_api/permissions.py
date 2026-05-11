@@ -20,6 +20,7 @@ _ALL: frozenset[str] = frozenset({
     "dashboard:read",
     "users:read",
     "users:write",
+    "users:approve",
     "audit_logs:read",
     "system:admin",
 })
@@ -32,7 +33,7 @@ ROLE_PERMISSIONS: Final[dict[str, frozenset[str]]] = {
         "devices:read",
         "alert_rules:read", "alert_rules:write",
         "dashboard:read",
-        "users:read",
+        "users:read", "users:approve",
         "audit_logs:read",
     }),
     "analyst": frozenset({

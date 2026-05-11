@@ -12,7 +12,7 @@ const ALL_PERMISSIONS = [
   'devices:read', 'devices:write',
   'alert_rules:read', 'alert_rules:write',
   'dashboard:read',
-  'users:read', 'users:write',
+  'users:read', 'users:write', 'users:approve',
   'audit_logs:read',
   'system:admin',
 ] as const;
@@ -27,7 +27,7 @@ export const ROLE_PERMISSIONS: Record<string, readonly Permission[]> = {
     'devices:read',
     'alert_rules:read', 'alert_rules:write',
     'dashboard:read',
-    'users:read',
+    'users:read', 'users:approve',
     'audit_logs:read',
   ],
   analyst: [

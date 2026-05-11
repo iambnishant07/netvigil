@@ -26,13 +26,14 @@ import * as SecureStore from 'expo-secure-store';
 
 const mockUser = {
   id: 'u-1', organizationId: 'org-1', email: 'analyst@example.com',
-  role: 'analyst' as const, mfaEnrolled: false, createdAt: '2026-01-01T00:00:00Z',
+  role: 'analyst' as const, status: 'active' as const, mfaEnrolled: false, createdAt: '2026-01-01T00:00:00Z',
 };
 const mockAuthResponse = {
   accessToken:  'at-abc',
   refreshToken: 'rt-def',
   expiresIn:    900,
   user:         mockUser,
+  mfaRequired:  false,
 };
 
 function wrapper({ children }: { children: React.ReactNode }) {

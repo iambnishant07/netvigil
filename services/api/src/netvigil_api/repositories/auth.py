@@ -14,6 +14,16 @@ async def create_org(conn: asyncpg.Connection, name: str, timezone: str) -> dict
     return dict(row)  # type: ignore[arg-type]
 
 
+async def get_org_by_id(conn: asyncpg.Connection, org_id: str) -> dict | None:  # type: ignore[type-arg]
+    row = await conn.fetchrow("SELECT * FROM organizations WHERE id = $1::uuid", org_id)
+    return dict(row) if row else None  # type: ignore[arg-type]
+
+
+async def list_orgs(conn: asyncpg.Connection) -> list[dict]:  # type: ignore[type-arg]
+    rows = await conn.fetch("SELECT id, name FROM organizations ORDER BY name")
+    return [dict(r) for r in rows]
+
+
 async def get_user_by_email(conn: asyncpg.Connection, email: str) -> dict | None:  # type: ignore[type-arg]
     row = await conn.fetchrow("SELECT * FROM users WHERE email = $1", email)
     return dict(row) if row else None  # type: ignore[arg-type]
@@ -35,12 +45,13 @@ async def create_user(
     email: str,
     password_hash: str,
     role: str = "admin",
+    status: str = "active",
 ) -> dict:  # type: ignore[type-arg]
     user_id = str(uuid7())
     row = await conn.fetchrow(
-        """INSERT INTO users(id, organization_id, email, password_hash, role)
-           VALUES($1,$2,$3,$4,$5) RETURNING *""",
-        user_id, org_id, email, password_hash, role,
+        """INSERT INTO users(id, organization_id, email, password_hash, role, status)
+           VALUES($1,$2,$3,$4,$5,$6) RETURNING *""",
+        user_id, org_id, email, password_hash, role, status,
     )
     return dict(row)  # type: ignore[arg-type]
 
@@ -50,13 +61,14 @@ async def create_google_user(
     org_id: str,
     email: str,
     google_sub: str,
-    role: str = "analyst",
+    role: str = "admin",
+    status: str = "active",
 ) -> dict:  # type: ignore[type-arg]
     user_id = str(uuid7())
     row = await conn.fetchrow(
-        """INSERT INTO users(id, organization_id, email, password_hash, role, google_sub)
-           VALUES($1,$2,$3,'GOOGLE_OAUTH',$4,$5) RETURNING *""",
-        user_id, org_id, email, role, google_sub,
+        """INSERT INTO users(id, organization_id, email, password_hash, role, google_sub, status)
+           VALUES($1,$2,$3,'GOOGLE_OAUTH',$4,$5,$6) RETURNING *""",
+        user_id, org_id, email, role, google_sub, status,
     )
     return dict(row)  # type: ignore[arg-type]
 

@@ -54,6 +54,7 @@ def _user_out(u: dict) -> UserOut:  # type: ignore[type-arg]
         organization_id=str(u["organization_id"]),
         email=u["email"],
         role=u["role"],
+        status=u.get("status", "active"),
         mfa_enrolled=u["mfa_enrolled"],
         created_at=u["created_at"].isoformat() if hasattr(u["created_at"], "isoformat") else u["created_at"],
     )
@@ -87,10 +88,29 @@ async def register(body: RegisterRequest) -> AuthResponse:
                 status_code=status.HTTP_409_CONFLICT,
                 detail={"code": "email_taken", "message": "Email already registered"},
             )
-        org = await auth_repo.create_org(conn, body.organization_name, body.timezone)
-        user = await auth_repo.create_user(
-            conn, str(org["id"]), body.email, hash_password(body.password), role="admin"
-        )
+
+        if body.organization_name:
+            # Create new organisation — user becomes admin, immediately active
+            org = await auth_repo.create_org(conn, body.organization_name.strip(), body.timezone)
+            user = await auth_repo.create_user(
+                conn, str(org["id"]), body.email,
+                hash_password(body.password),
+                role="admin", status="active",
+            )
+        else:
+            # Join existing organisation — pending admin approval
+            org = await auth_repo.get_org_by_id(conn, body.organization_id)  # type: ignore[arg-type]
+            if not org:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"code": "org_not_found", "message": "Organisation not found"},
+                )
+            user = await auth_repo.create_user(
+                conn, str(org["id"]), body.email,
+                hash_password(body.password),
+                role=body.role, status="pending",
+            )
+
     return await _issue_tokens(user)
 
 
@@ -126,6 +146,13 @@ async def me(current_user: CurrentUser) -> UserOut:
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return _user_out(user)
+
+
+@router.get("/organizations")
+async def list_organizations() -> list[dict]:  # type: ignore[type-arg]
+    """Public endpoint — returns all organisation IDs and names for the register dropdown."""
+    async with db.get_connection() as conn:
+        return await auth_repo.list_orgs(conn)
 
 
 @router.put("/me/push-token", status_code=status.HTTP_204_NO_CONTENT)
@@ -212,7 +239,6 @@ async def google_auth(body: GoogleAuthRequest) -> AuthResponse:
     aud: str = info.get("aud", "")
     if not google_sub or not email:
         raise _INVALID
-    # Reject tokens not issued for our client (when GOOGLE_CLIENT_ID is configured)
     if settings.google_client_id and aud != settings.google_client_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -229,7 +255,7 @@ async def google_auth(body: GoogleAuthRequest) -> AuthResponse:
             else:
                 org = await auth_repo.create_org(conn, body.organization_name, "Australia/Brisbane")
                 user = await auth_repo.create_google_user(
-                    conn, str(org["id"]), email, google_sub, role="admin",
+                    conn, str(org["id"]), email, google_sub, role="admin", status="active",
                 )
     if not user:
         raise _INVALID
@@ -312,7 +338,7 @@ async def google_mobile_callback(
             else:
                 org = await auth_repo.create_org(conn, email.split("@")[0], "Australia/Brisbane")
                 user = await auth_repo.create_google_user(
-                    conn, str(org["id"]), email, google_sub, role="admin",
+                    conn, str(org["id"]), email, google_sub, role="admin", status="active",
                 )
     if not user:
         return _err("user_creation_failed")
@@ -327,6 +353,7 @@ async def google_mobile_callback(
         "org_id":        u.organization_id,
         "email":         u.email,
         "role":          u.role,
+        "status":        u.status,
         "mfa_enrolled":  str(u.mfa_enrolled).lower(),
         "created_at":    u.created_at,
     })

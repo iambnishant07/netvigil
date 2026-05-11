@@ -1,15 +1,35 @@
 from __future__ import annotations
 
-from pydantic import EmailStr, field_validator
+from pydantic import EmailStr, field_validator, model_validator
 
 from netvigil_api.schemas.base import CamelModel
 
+REGISTERABLE_ROLES = frozenset({
+    "admin", "senior_analyst", "analyst",
+    "threat_hunter", "forensic_investigator", "auditor", "developer",
+})
+
 
 class RegisterRequest(CamelModel):
-    organization_name: str
+    # Exactly one of organization_name (create) or organization_id (join) must be set
+    organization_name: str | None = None
+    organization_id: str | None = None
     email: EmailStr
     password: str
+    role: str = "analyst"
     timezone: str = "Australia/Brisbane"
+
+    @model_validator(mode="after")
+    def org_xor(self) -> RegisterRequest:
+        has_name = bool(self.organization_name and self.organization_name.strip())
+        has_id = bool(self.organization_id and self.organization_id.strip())
+        if not has_name and not has_id:
+            raise ValueError("Provide either organizationName (create) or organizationId (join)")
+        if has_name and has_id:
+            raise ValueError("Provide either organizationName or organizationId, not both")
+        if has_name and len(self.organization_name.strip()) < 2:  # type: ignore[union-attr]
+            raise ValueError("Organisation name must be at least 2 characters")
+        return self
 
     @field_validator("password")
     @classmethod
@@ -18,11 +38,11 @@ class RegisterRequest(CamelModel):
             raise ValueError("Password must be at least 12 characters")
         return v
 
-    @field_validator("organization_name")
+    @field_validator("role")
     @classmethod
-    def org_name_length(cls, v: str) -> str:
-        if len(v) < 2:
-            raise ValueError("Organisation name must be at least 2 characters")
+    def role_valid(cls, v: str) -> str:
+        if v not in REGISTERABLE_ROLES:
+            raise ValueError(f"Invalid role: {v}")
         return v
 
 
@@ -40,6 +60,7 @@ class UserOut(CamelModel):
     organization_id: str
     email: str
     role: str
+    status: str
     mfa_enrolled: bool
     created_at: str
 

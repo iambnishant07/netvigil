@@ -49,10 +49,12 @@ export default function LoginScreen({ navigation }: Props) {
           id:             qp('user_id'),
           organizationId: qp('org_id'),
           email:          qp('email'),
-          role:           (qp('role') || 'admin') as 'admin' | 'analyst' | 'viewer',
+          role:           (qp('role') || 'admin') as import('@netvigil/shared-types').UserRole,
+          status:         (qp('status') || 'active') as import('@netvigil/shared-types').UserStatus,
           mfaEnrolled:    qp('mfa_enrolled') === 'true',
           createdAt:      qp('created_at') || new Date().toISOString(),
         },
+        mfaRequired: false,
       });
     } catch (e: unknown) {
       Alert.alert('Google sign-in failed', e instanceof Error ? e.message : 'Unknown error');

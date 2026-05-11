@@ -8,6 +8,7 @@ const mockUser: components['schemas']['User'] = {
   organizationId: '018e1234-0000-7000-8000-000000000000',
   email: 'admin@example.com',
   role: 'admin',
+  status: 'active',
   mfaEnrolled: false,
   createdAt: '2024-01-01T00:00:00Z',
 };
@@ -17,6 +18,7 @@ const mockAuthResponse: components['schemas']['AuthResponse'] = {
   refreshToken: 'mock-refresh-token',
   expiresIn: 900,
   user: mockUser,
+  mfaRequired: false,
 };
 
 export const authHandlers = [

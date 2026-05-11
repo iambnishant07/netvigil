@@ -5,17 +5,19 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/auth-context';
 import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
+import PendingScreen from '../screens/PendingScreen';
 import OfflineBanner from '../components/OfflineBanner';
 
 type RootStackParamList = {
-  Auth: undefined;
-  App:  undefined;
+  Auth:    undefined;
+  App:     undefined;
+  Pending: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isPending, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -30,10 +32,12 @@ export default function RootNavigator() {
       <OfflineBanner />
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {isAuthenticated ? (
-            <Stack.Screen name="App"  component={AppNavigator} />
+          {!isAuthenticated ? (
+            <Stack.Screen name="Auth"    component={AuthNavigator} />
+          ) : isPending ? (
+            <Stack.Screen name="Pending" component={PendingScreen} />
           ) : (
-            <Stack.Screen name="Auth" component={AuthNavigator} />
+            <Stack.Screen name="App"     component={AppNavigator} />
           )}
         </Stack.Navigator>
       </NavigationContainer>

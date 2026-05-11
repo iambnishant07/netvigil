@@ -18,9 +18,18 @@ export const qk = {
     list: () => ['alert-rules', 'list'] as const,
   },
   users: {
-    list: () => ['users', 'list'] as const,
+    list: (status?: string) => ['users', 'list', status] as const,
+    pending: ()             => ['users', 'list', 'pending'] as const,
   },
   auditLogs: {
     list: (page: number) => ['audit-logs', 'list', page] as const,
+  },
+  orgs: {
+    list: () => ['orgs', 'list'] as const,
+  },
+  admin: {
+    orgs:     ()          => ['admin', 'orgs'] as const,
+    orgUsers: (id: string) => ['admin', 'orgs', id, 'users'] as const,
+    users:    ()          => ['admin', 'users'] as const,
   },
 } as const;

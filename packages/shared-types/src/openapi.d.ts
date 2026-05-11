@@ -219,6 +219,429 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all organisations (public — for register dropdown) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id: string;
+                            name: string;
+                        }[];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List users in the caller's organisation */
+        get: {
+            parameters: {
+                query?: {
+                    status?: components["schemas"]["UserStatus"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OrgUser"][];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a user's role, active flag, or status */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        role?: components["schemas"]["UserRole"];
+                        isActive?: boolean;
+                        status?: components["schemas"]["UserStatus"];
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OrgUser"];
+                    };
+                };
+                404: components["responses"]["NotFound"];
+            };
+        };
+        trace?: never;
+    };
+    "/users/{userId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a pending user (sets status to active) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OrgUser"];
+                    };
+                };
+                404: components["responses"]["NotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a pending user */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OrgUser"];
+                    };
+                };
+                404: components["responses"]["NotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all organisations (super_admin only) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AdminOrg"][];
+                    };
+                };
+                403: components["responses"]["Forbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/organizations/{orgId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update an organisation's name or timezone (super_admin only) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    orgId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        timezone?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AdminOrg"];
+                    };
+                };
+                404: components["responses"]["NotFound"];
+            };
+        };
+        trace?: never;
+    };
+    "/admin/organizations/{orgId}/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: string;
+            };
+            cookie?: never;
+        };
+        /** List all users in a specific organisation (super_admin only) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    orgId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AdminUser"][];
+                    };
+                };
+                403: components["responses"]["Forbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all users across all organisations (super_admin only) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AdminUser"][];
+                    };
+                };
+                403: components["responses"]["Forbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update any user across all orgs (super_admin only) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        role?: components["schemas"]["UserRole"];
+                        isActive?: boolean;
+                        status?: components["schemas"]["UserStatus"];
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AdminUser"];
+                    };
+                };
+                404: components["responses"]["NotFound"];
+            };
+        };
+        trace?: never;
+    };
     "/devices": {
         parameters: {
             query?: never;
@@ -737,13 +1160,21 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * @description Exactly one of organizationName (create new org) or organizationId (join existing) must be set.
+         *     Creating a new org → role is forced to admin, status active.
+         *     Joining an existing org → chosen role, status pending (awaiting approval).
+         */
         RegisterRequest: {
-            organizationName: string;
+            organizationName?: string | null;
+            /** Format: uuid */
+            organizationId?: string | null;
             /** Format: email */
             email: string;
             password: string;
+            role?: components["schemas"]["UserRole"];
             /** @example Australia/Brisbane */
-            timezone: string;
+            timezone?: string;
         };
         LoginRequest: {
             /** Format: email */
@@ -751,19 +1182,22 @@ export interface components {
             password: string;
         };
         AuthResponse: {
-            accessToken: string;
-            refreshToken: string;
+            accessToken?: string;
+            refreshToken?: string;
             /**
              * @description Seconds until access token expires
              * @example 900
              */
-            expiresIn: number;
-            user: components["schemas"]["User"] | null;
-            /** True when the account requires MFA; no tokens are issued yet */
-            mfaRequired?: boolean;
-            /** Short-lived JWT to complete MFA via POST /auth/mfa/challenge */
-            mfaToken?: string;
+            expiresIn?: number;
+            user?: components["schemas"]["User"];
+            /** @default false */
+            mfaRequired: boolean;
+            mfaToken?: string | null;
         };
+        /** @enum {string} */
+        UserRole: "super_admin" | "admin" | "senior_analyst" | "analyst" | "threat_hunter" | "forensic_investigator" | "auditor" | "developer";
+        /** @enum {string} */
+        UserStatus: "pending" | "active" | "rejected";
         User: {
             /** Format: uuid */
             id: string;
@@ -771,8 +1205,44 @@ export interface components {
             organizationId: string;
             /** Format: email */
             email: string;
-            /** @enum {string} */
-            role: "admin" | "analyst" | "viewer";
+            role: components["schemas"]["UserRole"];
+            status: components["schemas"]["UserStatus"];
+            mfaEnrolled: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        OrgUser: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            role: components["schemas"]["UserRole"];
+            isActive: boolean;
+            status: components["schemas"]["UserStatus"];
+            mfaEnrolled: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminOrg: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            timezone: string;
+            userCount: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminUser: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            organizationName: string;
+            /** Format: email */
+            email: string;
+            role: components["schemas"]["UserRole"];
+            isActive: boolean;
+            status: components["schemas"]["UserStatus"];
             mfaEnrolled: boolean;
             /** Format: date-time */
             createdAt: string;
@@ -938,6 +1408,15 @@ export interface components {
         };
         /** @description Invalid or missing credentials */
         Unauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Insufficient permissions */
+        Forbidden: {
             headers: {
                 [name: string]: unknown;
             };

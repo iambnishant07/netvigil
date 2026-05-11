@@ -9,12 +9,20 @@ ALLOWED_ROLES = frozenset({
     "threat_hunter", "forensic_investigator", "auditor", "developer",
 })
 
+ALLOWED_STATUSES = frozenset({"pending", "active", "rejected"})
+
+
+class OrgOut(CamelModel):
+    id: str
+    name: str
+
 
 class OrgUserOut(CamelModel):
     id: str
     email: str
     role: str
     is_active: bool
+    status: str
     mfa_enrolled: bool
     created_at: str
 
@@ -22,12 +30,20 @@ class OrgUserOut(CamelModel):
 class UserPatch(CamelModel):
     role: str | None = None
     is_active: bool | None = None
+    status: str | None = None
 
     @field_validator("role")
     @classmethod
     def role_valid(cls, v: str | None) -> str | None:
         if v is not None and v not in ALLOWED_ROLES:
             raise ValueError(f"Invalid role: {v}")
+        return v
+
+    @field_validator("status")
+    @classmethod
+    def status_valid(cls, v: str | None) -> str | None:
+        if v is not None and v not in ALLOWED_STATUSES:
+            raise ValueError(f"Invalid status: {v}")
         return v
 
 
@@ -39,3 +55,50 @@ class AuditLogOut(CamelModel):
     target_id: str | None
     metadata: dict  # type: ignore[type-arg]
     created_at: str
+
+
+# ── Admin schemas ─────────────────────────────────────────────────────────────
+
+class AdminOrgOut(CamelModel):
+    id: str
+    name: str
+    timezone: str
+    user_count: int
+    created_at: str
+
+
+class AdminOrgPatch(CamelModel):
+    name: str | None = None
+    timezone: str | None = None
+
+
+class AdminUserOut(CamelModel):
+    id: str
+    organization_id: str
+    organization_name: str
+    email: str
+    role: str
+    is_active: bool
+    status: str
+    mfa_enrolled: bool
+    created_at: str
+
+
+class AdminUserPatch(CamelModel):
+    role: str | None = None
+    is_active: bool | None = None
+    status: str | None = None
+
+    @field_validator("role")
+    @classmethod
+    def role_valid(cls, v: str | None) -> str | None:
+        if v is not None and v not in ALLOWED_ROLES:
+            raise ValueError(f"Invalid role: {v}")
+        return v
+
+    @field_validator("status")
+    @classmethod
+    def status_valid(cls, v: str | None) -> str | None:
+        if v is not None and v not in ALLOWED_STATUSES:
+            raise ValueError(f"Invalid status: {v}")
+        return v

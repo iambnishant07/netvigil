@@ -5,6 +5,7 @@ import { clearTokens, storeTokens } from '../lib/api-client.ts';
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
+  isPending: boolean;
   login: (response: AuthResponse) => void;
   logout: () => void;
 }
@@ -27,9 +28,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(readStoredUser);
 
   function login(response: AuthResponse): void {
-    storeTokens(response.accessToken, response.refreshToken);
+    storeTokens(response.accessToken ?? '', response.refreshToken ?? '');
     localStorage.setItem('nv_user', JSON.stringify(response.user));
-    setUser(response.user);
+    setUser(response.user ?? null);
   }
 
   function logout(): void {
@@ -38,8 +39,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
+  const isPending = user?.status === 'pending';
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: user !== null, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: user !== null, isPending, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

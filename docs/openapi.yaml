@@ -137,6 +137,207 @@ paths:
               schema: { $ref: '#/components/schemas/User' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /auth/organizations:
+    get:
+      tags: [auth]
+      summary: List all organisations (public — for register dropdown)
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, name]
+                  properties:
+                    id: { type: string, format: uuid }
+                    name: { type: string }
+
+  # ─── Users (RBAC) ─────────────────────────────────────────────────────────
+  /users:
+    get:
+      tags: [admin]
+      summary: List users in the caller's organisation
+      parameters:
+        - in: query
+          name: status
+          schema: { $ref: '#/components/schemas/UserStatus' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/OrgUser' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /users/{userId}:
+    parameters:
+      - in: path
+        name: userId
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [admin]
+      summary: Update a user's role, active flag, or status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: { $ref: '#/components/schemas/UserRole' }
+                isActive: { type: boolean }
+                status: { $ref: '#/components/schemas/UserStatus' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrgUser' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/{userId}/approve:
+    parameters:
+      - in: path
+        name: userId
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [admin]
+      summary: Approve a pending user (sets status to active)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrgUser' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/{userId}/reject:
+    parameters:
+      - in: path
+        name: userId
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [admin]
+      summary: Reject a pending user
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrgUser' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ─── Super-admin panel ────────────────────────────────────────────────────
+  /admin/organizations:
+    get:
+      tags: [admin]
+      summary: List all organisations (super_admin only)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminOrg' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/organizations/{orgId}:
+    parameters:
+      - in: path
+        name: orgId
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [admin]
+      summary: Update an organisation's name or timezone (super_admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 2, maxLength: 200 }
+                timezone: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminOrg' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /admin/organizations/{orgId}/users:
+    parameters:
+      - in: path
+        name: orgId
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [admin]
+      summary: List all users in a specific organisation (super_admin only)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminUser' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/users:
+    get:
+      tags: [admin]
+      summary: List all users across all organisations (super_admin only)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminUser' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/users/{userId}:
+    parameters:
+      - in: path
+        name: userId
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [admin]
+      summary: Update any user across all orgs (super_admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: { $ref: '#/components/schemas/UserRole' }
+                isActive: { type: boolean }
+                status: { $ref: '#/components/schemas/UserStatus' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUser' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   # ─── Devices (FR-02, FR-09) ──────────────────────────────────────────────
   /devices:
     get:
@@ -409,6 +610,11 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     NotFound:
       description: Resource not found
       content:
@@ -430,11 +636,25 @@ components:
     # ─── Auth ────────────────────────────────────────────────────────────
     RegisterRequest:
       type: object
-      required: [organizationName, email, password, timezone]
+      required: [email, password]
+      description: |
+        Exactly one of organizationName (create new org) or organizationId (join existing) must be set.
+        Creating a new org → role is forced to admin, status active.
+        Joining an existing org → chosen role, status pending (awaiting approval).
       properties:
-        organizationName: { type: string, minLength: 2, maxLength: 200 }
+        organizationName:
+          type: string
+          minLength: 2
+          maxLength: 200
+          nullable: true
+        organizationId:
+          type: string
+          format: uuid
+          nullable: true
         email: { type: string, format: email }
         password: { type: string, minLength: 12 }
+        role:
+          $ref: '#/components/schemas/UserRole'
         timezone: { type: string, example: Australia/Brisbane }
 
     LoginRequest:
@@ -446,7 +666,6 @@ components:
 
     AuthResponse:
       type: object
-      required: [accessToken, refreshToken, expiresIn, user]
       properties:
         accessToken: { type: string }
         refreshToken: { type: string }
@@ -454,16 +673,77 @@ components:
           type: integer
           description: Seconds until access token expires
           example: 900
-        user: { $ref: '#/components/schemas/User' }
+        user:
+          $ref: '#/components/schemas/User'
+          nullable: true
+        mfaRequired:
+          type: boolean
+          default: false
+        mfaToken:
+          type: string
+          nullable: true
+
+    UserRole:
+      type: string
+      enum:
+        - super_admin
+        - admin
+        - senior_analyst
+        - analyst
+        - threat_hunter
+        - forensic_investigator
+        - auditor
+        - developer
+
+    UserStatus:
+      type: string
+      enum: [pending, active, rejected]
 
     User:
       type: object
-      required: [id, organizationId, email, role, mfaEnrolled, createdAt]
+      required: [id, organizationId, email, role, status, mfaEnrolled, createdAt]
       properties:
         id: { type: string, format: uuid }
         organizationId: { type: string, format: uuid }
         email: { type: string, format: email }
-        role: { type: string, enum: [admin, analyst, viewer] }
+        role: { $ref: '#/components/schemas/UserRole' }
+        status: { $ref: '#/components/schemas/UserStatus' }
+        mfaEnrolled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    OrgUser:
+      type: object
+      required: [id, email, role, isActive, status, mfaEnrolled, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/UserRole' }
+        isActive: { type: boolean }
+        status: { $ref: '#/components/schemas/UserStatus' }
+        mfaEnrolled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    AdminOrg:
+      type: object
+      required: [id, name, timezone, userCount, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        timezone: { type: string }
+        userCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    AdminUser:
+      type: object
+      required: [id, organizationId, organizationName, email, role, isActive, status, mfaEnrolled, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        organizationName: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/UserRole' }
+        isActive: { type: boolean }
+        status: { $ref: '#/components/schemas/UserStatus' }
         mfaEnrolled: { type: boolean }
         createdAt: { type: string, format: date-time }
 

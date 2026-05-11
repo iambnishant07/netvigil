@@ -32,3 +32,9 @@ export type AlertChannel = components['schemas']['AlertChannel'];
 export type AlertRule = components['schemas']['AlertRule'];
 export type AlertRuleCreate = components['schemas']['AlertRuleCreate'];
 export type AlertRuleUpdate = components['schemas']['AlertRuleUpdate'];
+
+export type UserRole = components['schemas']['UserRole'];
+export type UserStatus = components['schemas']['UserStatus'];
+export type OrgUser = components['schemas']['OrgUser'];
+export type AdminOrg = components['schemas']['AdminOrg'];
+export type AdminUser = components['schemas']['AdminUser'];

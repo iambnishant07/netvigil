@@ -7,6 +7,7 @@ import { storeTokens, clearTokens, registerSessionExpiredHandler, TOKEN_KEY, BIO
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
+  isPending: boolean;
   isLoading: boolean;
   biometricEnabled: boolean;
   login: (response: AuthResponse) => Promise<void>;
@@ -64,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(response: AuthResponse): Promise<void> {
     // mfaRequired responses carry no tokens — LoginScreen routes to MfaChallenge instead
     if (response.mfaRequired) return;
-    await storeTokens(response.accessToken, response.refreshToken);
+    await storeTokens(response.accessToken ?? '', response.refreshToken ?? '');
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(response.user));
     setUser(response.user ?? null);
   }
@@ -86,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: user !== null, isLoading, biometricEnabled, login, logout, setBiometric }}
+      value={{ user, isAuthenticated: user !== null, isPending: user?.status === 'pending', isLoading, biometricEnabled, login, logout, setBiometric }}
     >
       {children}
     </AuthContext.Provider>

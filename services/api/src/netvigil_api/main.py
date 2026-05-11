@@ -10,7 +10,7 @@ from fastapi import FastAPI
 
 from netvigil_api import database as db
 from netvigil_api.config import settings
-from netvigil_api.routers import alert_rules, audit_logs, auth, dashboard, devices, health, incidents, seed, users
+from netvigil_api.routers import admin, alert_rules, audit_logs, auth, dashboard, devices, health, incidents, seed, users
 
 logging.basicConfig(
     level=logging.INFO,
@@ -117,3 +117,4 @@ app.include_router(dashboard.router,    prefix=_PREFIX)
 app.include_router(seed.router,         prefix=_PREFIX)
 app.include_router(users.router,        prefix=_PREFIX)
 app.include_router(audit_logs.router,   prefix=_PREFIX)
+app.include_router(admin.router,        prefix=_PREFIX)
