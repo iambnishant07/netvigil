@@ -1206,6 +1206,7 @@ export interface components {
             id: string;
             /** Format: uuid */
             organizationId: string;
+            organizationName?: string | null;
             /** Format: email */
             email: string;
             role: components["schemas"]["UserRole"];
@@ -1213,6 +1214,12 @@ export interface components {
             mfaEnrolled: boolean;
             /** Format: date-time */
             createdAt: string;
+            fullName?: string | null;
+            phone?: string | null;
+            address?: string | null;
+            dob?: string | null;
+            hasGoogleAuth?: boolean;
+            hasPasswordAuth?: boolean;
         };
         OrgUser: {
             /** Format: uuid */

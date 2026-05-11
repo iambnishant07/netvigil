@@ -46,8 +46,20 @@ async function request<T>(path: string, init?: RequestInit, isRetry = false): Pr
   }
 
   if (!res.ok) {
-    const body = await res.json().catch(() => null) as { message?: string } | null;
-    throw new Error(body?.message ?? res.statusText);
+    const body = await res.json().catch(() => null) as {
+      message?: string;
+      detail?: string | { message?: string } | unknown[];
+    } | null;
+    const detail = body?.detail;
+    let msg: string =
+      body?.message ??
+      (typeof detail === 'string' ? detail :
+       (detail && !Array.isArray(detail) && typeof detail === 'object' && 'message' in detail)
+         ? String((detail as { message?: unknown }).message ?? '')
+         : null) ??
+      res.statusText;
+    if (!msg) msg = 'Request failed';
+    throw new Error(msg);
   }
 
   if (res.status === 204) return undefined as T;

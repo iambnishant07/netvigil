@@ -22,6 +22,7 @@ from netvigil_api.schemas.auth import (
     MfaVerifyRequest,
     RefreshRequest,
     RegisterRequest,
+    UpdateProfileRequest,
     UserOut,
 )
 from netvigil_api.security import (
@@ -146,10 +147,87 @@ async def refresh(body: RefreshRequest) -> AuthResponse:
 @router.get("/me", response_model=UserOut, response_model_by_alias=True)
 async def me(current_user: CurrentUser) -> UserOut:
     async with db.get_connection() as conn:
-        user = await auth_repo.get_user_by_id(conn, current_user["sub"])
-    if not user:
+        row = await conn.fetchrow(
+            """SELECT u.*, o.name AS organization_name
+               FROM users u
+               JOIN organizations o ON o.id = u.organization_id
+               WHERE u.id = $1::uuid""",
+            current_user["sub"],
+        )
+    if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return _user_out(user)
+    r = dict(row)
+    return UserOut(
+        id=str(r["id"]),
+        organization_id=str(r["organization_id"]),
+        organization_name=r.get("organization_name"),
+        email=r["email"],
+        role=r["role"],
+        status=r.get("status", "active"),
+        mfa_enrolled=r["mfa_enrolled"],
+        created_at=r["created_at"].isoformat(),
+        full_name=r.get("full_name"),
+        phone=r.get("phone"),
+        address=r.get("address"),
+        dob=r["dob"].isoformat() if r.get("dob") else None,
+        has_google_auth=bool(r.get("google_sub")),
+        has_password_auth=r.get("password_hash", "") != "GOOGLE_OAUTH",
+    )
+
+
+@router.patch("/me", response_model=UserOut, response_model_by_alias=True)
+async def update_me(body: UpdateProfileRequest, current_user: CurrentUser) -> UserOut:
+    if all(v is None for v in [body.full_name, body.phone, body.address, body.dob]):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nothing to update",
+        )
+    async with db.get_connection() as conn:
+        sets: list[str] = []
+        vals: list[object] = []
+        if body.full_name is not None:
+            vals.append(body.full_name.strip() or None)
+            sets.append(f"full_name = ${len(vals)}")
+        if body.phone is not None:
+            vals.append(body.phone.strip() or None)
+            sets.append(f"phone = ${len(vals)}")
+        if body.address is not None:
+            vals.append(body.address.strip() or None)
+            sets.append(f"address = ${len(vals)}")
+        if body.dob is not None:
+            vals.append(body.dob or None)
+            sets.append(f"dob = ${len(vals)}")
+        vals.append(current_user["sub"])
+        await conn.execute(  # noqa: S608
+            f"UPDATE users SET {', '.join(sets)} WHERE id = ${len(vals)}::uuid",
+            *vals,
+        )
+        row = await conn.fetchrow(
+            """SELECT u.*, o.name AS organization_name
+               FROM users u
+               JOIN organizations o ON o.id = u.organization_id
+               WHERE u.id = $1::uuid""",
+            current_user["sub"],
+        )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    r = dict(row)
+    return UserOut(
+        id=str(r["id"]),
+        organization_id=str(r["organization_id"]),
+        organization_name=r.get("organization_name"),
+        email=r["email"],
+        role=r["role"],
+        status=r.get("status", "active"),
+        mfa_enrolled=r["mfa_enrolled"],
+        created_at=r["created_at"].isoformat(),
+        full_name=r.get("full_name"),
+        phone=r.get("phone"),
+        address=r.get("address"),
+        dob=r["dob"].isoformat() if r.get("dob") else None,
+        has_google_auth=bool(r.get("google_sub")),
+        has_password_auth=r.get("password_hash", "") != "GOOGLE_OAUTH",
+    )
 
 
 @router.get("/organizations")

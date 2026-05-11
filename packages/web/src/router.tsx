@@ -12,6 +12,7 @@ import AlertRulesPage from './pages/AlertRulesPage.tsx';
 import TeamPage from './pages/TeamPage.tsx';
 import AuditLogPage from './pages/AuditLogPage.tsx';
 import AdminPage from './pages/AdminPage.tsx';
+import ProfilePage from './pages/ProfilePage.tsx';
 
 export const router = createBrowserRouter([
   { path: '/login',    element: <LoginPage /> },
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
           { path: '/team',             element: <TeamPage /> },
           { path: '/audit-log',        element: <AuditLogPage /> },
           { path: '/admin',            element: <AdminPage /> },
+          { path: '/profile',          element: <ProfilePage /> },
         ],
       },
     ],

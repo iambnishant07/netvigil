@@ -60,11 +60,25 @@ class RefreshRequest(CamelModel):
 class UserOut(CamelModel):
     id: str
     organization_id: str
+    organization_name: str | None = None
     email: str
     role: str
     status: str
     mfa_enrolled: bool
     created_at: str
+    full_name: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    dob: str | None = None
+    has_google_auth: bool = False
+    has_password_auth: bool = False
+
+
+class UpdateProfileRequest(CamelModel):
+    full_name: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    dob: str | None = None
 
 
 class AuthResponse(CamelModel):

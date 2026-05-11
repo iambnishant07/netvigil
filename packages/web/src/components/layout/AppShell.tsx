@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/auth-context.tsx';
 import { usePermission } from '../../lib/permissions.ts';
 
@@ -127,15 +127,27 @@ export default function AppShell() {
         </nav>
 
         {/* User footer */}
-        <div className="border-t border-slate-700 px-4 py-4">
-          <p className="truncate text-xs text-slate-400 mb-1">{user?.email}</p>
-          <p className="text-xs text-slate-600 capitalize mb-2">
-            {user?.role?.replace(/_/g, ' ')}
-          </p>
+        <div className="border-t border-slate-700 px-3 py-3 space-y-1">
+          <Link
+            to="/profile"
+            className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-slate-700/60 transition-colors group"
+          >
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
+              {(user?.email?.slice(0, 2) ?? 'NV').toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-slate-300 group-hover:text-slate-100">
+                {user?.email}
+              </p>
+              <p className="text-xs text-slate-500 capitalize">
+                {user?.role?.replace(/_/g, ' ')}
+              </p>
+            </div>
+          </Link>
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full text-left text-xs text-slate-500 hover:text-red-400 transition-colors"
+            className="w-full text-left px-2 text-xs text-slate-500 hover:text-red-400 transition-colors"
           >
             Sign out
           </button>

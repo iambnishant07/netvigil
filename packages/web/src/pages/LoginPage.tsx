@@ -12,6 +12,7 @@ import { ErrorAlert } from '../components/ui/ErrorAlert.tsx';
 import type { AuthResponse } from '@netvigil/shared-types';
 
 const GOOGLE_CLIENT_ID = import.meta.env['VITE_GOOGLE_CLIENT_ID'] as string | undefined;
+const REMEMBER_KEY = 'nv_remember_email';
 
 const ROLES = [
   { value: 'admin',                 label: 'Admin'                 },
@@ -35,10 +36,13 @@ interface OrgOption { id: string; name: string; }
 type GoogleStep = 'initial' | 'org_select';
 
 export default function LoginPage() {
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors]     = useState<FormErrors>({});
+  const remembered = localStorage.getItem(REMEMBER_KEY) ?? '';
+  const [email, setEmail]         = useState(remembered);
+  const [password, setPassword]   = useState('');
+  const [rememberMe, setRememberMe] = useState(!!remembered);
+  const [errors, setErrors]       = useState<FormErrors>({});
   const [googleError, setGoogleError] = useState('');
+  const [googleBtnReady, setGoogleBtnReady] = useState(false);
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
   // Two-step Google flow
@@ -100,10 +104,7 @@ export default function LoginPage() {
       return;
     }
     setGoogleError('');
-    const body: Record<string, string> = {
-      googleSessionToken,
-      role: googleRole,
-    };
+    const body: Record<string, string> = { googleSessionToken, role: googleRole };
     if (googleOrgMode === 'create') {
       body['organizationName'] = googleOrgName.trim();
     } else {
@@ -127,7 +128,9 @@ export default function LoginPage() {
       window.google?.accounts.id.renderButton(googleBtnRef.current!, {
         theme: 'outline', size: 'large', width: '100%', text: 'continue_with',
       });
+      setGoogleBtnReady(true);
     };
+    script.onerror = () => setGoogleError('Failed to load Google sign-in. Try again later.');
     document.head.appendChild(script);
     return () => { script.remove(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,6 +140,11 @@ export default function LoginPage() {
     mutationFn: (data: z.infer<typeof schema>) =>
       apiClient.post<AuthResponse>('/auth/login', data),
     onSuccess: (data) => {
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_KEY, email.trim());
+      } else {
+        localStorage.removeItem(REMEMBER_KEY);
+      }
       login(data);
       navigate('/dashboard', { replace: true });
     },
@@ -187,6 +195,17 @@ export default function LoginPage() {
               placeholder="••••••••"
             />
 
+            {/* Remember me */}
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-800"
+              />
+              <span className="text-sm text-slate-400">Remember me</span>
+            </label>
+
             {mutation.isError && (
               <ErrorAlert message={(mutation.error as Error).message} />
             )}
@@ -197,20 +216,32 @@ export default function LoginPage() {
           </form>
         </Card>
 
+        {/* Google sign-in — only renders once GOOGLE_CLIENT_ID is available */}
         {GOOGLE_CLIENT_ID && (
           <Card>
             {googleError && <ErrorAlert message={googleError} />}
 
             {googleStep === 'initial' ? (
-              <div ref={googleBtnRef} className="flex justify-center" />
+              <div className="space-y-2">
+                {/* Always mount the ref div so GSI can render into it; hide until ready */}
+                <div
+                  ref={googleBtnRef}
+                  className={`flex justify-center transition-opacity ${googleBtnReady ? 'opacity-100' : 'opacity-0 h-0'}`}
+                />
+                {!googleBtnReady && !googleError && (
+                  <div className="flex justify-center py-1">
+                    <span className="text-xs text-slate-500">Loading Google sign-in…</span>
+                  </div>
+                )}
+              </div>
             ) : (
               <form onSubmit={handleGoogleComplete} className="space-y-4" noValidate>
                 <p className="text-sm text-slate-300">
-                  Signing in as <span className="font-medium text-slate-100">{googleEmail}</span>.
+                  Signing in as{' '}
+                  <span className="font-medium text-slate-100">{googleEmail}</span>.
                   Choose your organisation and role.
                 </p>
 
-                {/* Join / create toggle */}
                 <div className="flex rounded-lg border border-slate-700 bg-slate-800/60 p-1 gap-1">
                   <button
                     type="button"
@@ -265,7 +296,7 @@ export default function LoginPage() {
                     type="button"
                     variant="secondary"
                     className="flex-1"
-                    onClick={() => { setGoogleStep('initial'); setGoogleError(''); }}
+                    onClick={() => { setGoogleStep('initial'); setGoogleBtnReady(false); setGoogleError(''); }}
                   >
                     Back
                   </Button>
