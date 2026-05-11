@@ -21,7 +21,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "au.edu.vu.netvigil",
-      "googleServicesFile": "./google-services.json",
+      "googleServicesFile": "$GOOGLE_SERVICES_JSON",
       "permissions": [
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT"
