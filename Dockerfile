@@ -19,7 +19,7 @@ COPY packages/web packages/web
 ARG VITE_API_URL=/api/v1
 ENV VITE_API_URL=${VITE_API_URL}
 
-RUN pnpm --filter @netvigil/web build:prod
+RUN pnpm --filter @aankhanet/web build:prod
 
 FROM caddy:2-alpine
 EXPOSE 80

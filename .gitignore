@@ -17,6 +17,7 @@ build/
 packages/mobile/.env.local
 # FCM credentials — add via EAS secrets, never commit
 packages/mobile/google-services.json
+packages/mobile/firebase-service-account.json
 
 # Python
 __pycache__/

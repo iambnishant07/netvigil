@@ -8,7 +8,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/auth-context';
 import { apiClient } from '../lib/api-client';
 import { formatRole, ROLE_PERMISSIONS } from '../lib/permissions';
-import type { User } from '@netvigil/shared-types';
+import type { User } from '@aankhanet/shared-types';
 import type { SettingsStackParamList } from '../navigation/AppNavigator';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'SettingsHome'>;

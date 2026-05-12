@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seed the NetVigil pipeline with synthetic events.
+"""Seed the AankhaNet pipeline with synthetic events.
 
 Publishes one test NetFlow record directly to Kafka so the full chain runs:
   Kafka (raw.netflow) → detector → Postgres + InfluxDB + Kafka (incidents.created)
@@ -79,10 +79,10 @@ def _delivery(err: object, msg: object) -> None:
     if err:
         print(f"  ✗ delivery failed: {err}")
     else:
-        print(f"  ✓ delivered to {msg.topic()} [{msg.partition()}] offset {msg.offset()}")  # type: ignore[union-attr]
+        print(f"  OK delivered to {msg.topic()} [{msg.partition()}] offset {msg.offset()}")  # type: ignore[union-attr]
 
 
-print(f"Publishing test NetFlow event to raw.netflow …")
+print("Publishing test NetFlow event to raw.netflow ...")
 producer.produce("raw.netflow", json.dumps(record).encode(), callback=_delivery)
 producer.flush(timeout=10)
 print("\nDone. Watch the detector + dispatcher Railway logs for processing.")

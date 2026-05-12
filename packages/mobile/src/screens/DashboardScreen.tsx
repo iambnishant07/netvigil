@@ -6,7 +6,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { qk } from '../lib/query-keys';
 import { apiClient } from '../lib/api-client';
 import SeverityBadge from '../components/SeverityBadge';
-import type { DashboardKpis, IncidentList, Severity } from '@netvigil/shared-types';
+import type { DashboardKpis, IncidentList, Severity } from '@aankhanet/shared-types';
 import type { AppTabParamList } from '../navigation/AppNavigator';
 
 type NavProp = BottomTabNavigationProp<AppTabParamList>;

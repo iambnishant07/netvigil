@@ -44,7 +44,7 @@ def _mock_tokeninfo(payload: dict, status_code: int = 200) -> MagicMock:  # type
 @pytest.mark.asyncio
 async def test_google_auth_invalid_token_returns_401(client: AsyncClient) -> None:
     mock_client = _mock_tokeninfo({}, status_code=400)
-    with patch("netvigil_api.routers.auth.httpx.AsyncClient", return_value=mock_client):
+    with patch("aankhanet_api.routers.auth.httpx.AsyncClient", return_value=mock_client):
         r = await client.post(GOOGLE, json={"id_token": "bad-token", "organization_name": "Org"})
     assert r.status_code == 401
 
@@ -52,7 +52,7 @@ async def test_google_auth_invalid_token_returns_401(client: AsyncClient) -> Non
 @pytest.mark.asyncio
 async def test_google_auth_missing_sub_returns_401(client: AsyncClient) -> None:
     mock_client = _mock_tokeninfo({"email": _GOOGLE_EMAIL})  # no sub
-    with patch("netvigil_api.routers.auth.httpx.AsyncClient", return_value=mock_client):
+    with patch("aankhanet_api.routers.auth.httpx.AsyncClient", return_value=mock_client):
         r = await client.post(GOOGLE, json={"id_token": "tok", "organization_name": "Org"})
     assert r.status_code == 401
 
@@ -60,7 +60,7 @@ async def test_google_auth_missing_sub_returns_401(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_google_auth_creates_new_user_and_org(client: AsyncClient) -> None:
     mock_client = _mock_tokeninfo(_VALID_TOKENINFO)
-    with patch("netvigil_api.routers.auth.httpx.AsyncClient", return_value=mock_client):
+    with patch("aankhanet_api.routers.auth.httpx.AsyncClient", return_value=mock_client):
         r = await client.post(GOOGLE, json={"id_token": "valid-tok", "organization_name": "GOrg"})
     assert r.status_code == 200
     body = r.json()
@@ -76,7 +76,7 @@ async def test_google_auth_links_to_existing_email(client: AsyncClient) -> None:
 
     tokeninfo = {**_VALID_TOKENINFO, "email": REG_PAYLOAD["email"], "sub": "new-google-sub"}
     mock_client = _mock_tokeninfo(tokeninfo)
-    with patch("netvigil_api.routers.auth.httpx.AsyncClient", return_value=mock_client):
+    with patch("aankhanet_api.routers.auth.httpx.AsyncClient", return_value=mock_client):
         r = await client.post(GOOGLE, json={"id_token": "valid-tok", "organization_name": "Ignored"})
     assert r.status_code == 200
     assert r.json()["user"]["email"] == REG_PAYLOAD["email"]
@@ -86,12 +86,12 @@ async def test_google_auth_links_to_existing_email(client: AsyncClient) -> None:
 async def test_google_auth_second_login_uses_existing_sub(client: AsyncClient) -> None:
     """Same Google sub on second call should return the same user."""
     mock_client = _mock_tokeninfo(_VALID_TOKENINFO)
-    with patch("netvigil_api.routers.auth.httpx.AsyncClient", return_value=mock_client):
+    with patch("aankhanet_api.routers.auth.httpx.AsyncClient", return_value=mock_client):
         r1 = await client.post(GOOGLE, json={"id_token": "tok", "organization_name": "GOrg"})
     uid1 = r1.json()["user"]["id"]
 
     mock_client2 = _mock_tokeninfo(_VALID_TOKENINFO)
-    with patch("netvigil_api.routers.auth.httpx.AsyncClient", return_value=mock_client2):
+    with patch("aankhanet_api.routers.auth.httpx.AsyncClient", return_value=mock_client2):
         r2 = await client.post(GOOGLE, json={"id_token": "tok", "organization_name": "GOrg"})
     uid2 = r2.json()["user"]["id"]
 

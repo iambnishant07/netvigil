@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from netvigil_detector.mitre import get_technique, get_severity_floor, score_to_severity
+from aankhanet_detector.mitre import get_technique, get_severity_floor, score_to_severity
 
 
 # ── get_technique ──────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@ import { Input } from '../components/ui/Input.tsx';
 import { Select } from '../components/ui/Select.tsx';
 import { Card } from '../components/ui/Card.tsx';
 import { ErrorAlert } from '../components/ui/ErrorAlert.tsx';
-import type { AuthResponse } from '@netvigil/shared-types';
+import type { AuthResponse } from '@aankhanet/shared-types';
 
 const TIMEZONES = [
   { value: 'Australia/Sydney',    label: 'Sydney (AEDT/AEST)'   },
@@ -121,7 +121,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-slate-100">Create an account</h1>
-          <p className="mt-1 text-sm text-slate-400">Get started with NetVigil</p>
+          <p className="mt-1 text-sm text-slate-400">Get started with AankhaNet</p>
         </div>
 
         {/* Mode toggle */}

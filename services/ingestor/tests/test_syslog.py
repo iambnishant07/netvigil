@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from netvigil_ingestor.collectors.syslog import _parse
+from aankhanet_ingestor.collectors.syslog import _parse
 
 
 # ── RFC 5424 ──────────────────────────────────────────────────────────────────

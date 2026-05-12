@@ -10,7 +10,7 @@ import { Select } from '../components/ui/Select.tsx';
 import { Card } from '../components/ui/Card.tsx';
 import { Spinner } from '../components/ui/Spinner.tsx';
 import { ErrorAlert } from '../components/ui/ErrorAlert.tsx';
-import type { AlertRule, AlertRuleCreate, Severity, AlertChannel } from '@netvigil/shared-types';
+import type { AlertRule, AlertRuleCreate, Severity, AlertChannel } from '@aankhanet/shared-types';
 
 const SEVERITY_OPTIONS: { value: Severity; label: string }[] = [
   { value: 'critical', label: 'Critical' },

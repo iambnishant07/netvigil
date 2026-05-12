@@ -33,12 +33,12 @@ importers:
 
   packages/mobile:
     dependencies:
+      '@aankhanet/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
       '@expo/vector-icons':
         specifier: ^15.0.0
         version: 15.1.1(expo-font@14.0.11(expo@54.0.34(@babel/core@7.29.0)(graphql@16.13.2)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@18.3.28)(react@19.1.0))(react@19.1.0)(typescript@5.9.3))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@18.3.28)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@18.3.28)(react@19.1.0))(react@19.1.0)
-      '@netvigil/shared-types':
-        specifier: workspace:*
-        version: link:../shared-types
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
         version: 2.2.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@18.3.28)(react@19.1.0))
@@ -139,7 +139,7 @@ importers:
 
   packages/mock-api:
     dependencies:
-      '@netvigil/shared-types':
+      '@aankhanet/shared-types':
         specifier: workspace:*
         version: link:../shared-types
       msw:
@@ -161,7 +161,7 @@ importers:
 
   packages/web:
     dependencies:
-      '@netvigil/shared-types':
+      '@aankhanet/shared-types':
         specifier: workspace:*
         version: link:../shared-types
       '@tanstack/react-query':
@@ -183,7 +183,7 @@ importers:
         specifier: ^3.23.0
         version: 3.25.76
     devDependencies:
-      '@netvigil/mock-api':
+      '@aankhanet/mock-api':
         specifier: workspace:*
         version: link:../mock-api
       '@testing-library/jest-dom':

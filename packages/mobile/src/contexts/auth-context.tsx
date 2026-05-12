@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
-import type { AuthResponse, User } from '@netvigil/shared-types';
+import type { AuthResponse, User } from '@aankhanet/shared-types';
 import { storeTokens, clearTokens, registerSessionExpiredHandler, TOKEN_KEY, BIOMETRIC_KEY } from '../lib/api-client';
 
 interface AuthContextValue {
@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (token && storedUser) {
         if (bioFlag === 'true') {
           const result = await LocalAuthentication.authenticateAsync({
-            promptMessage: 'Confirm your identity to open NetVigil',
+            promptMessage: 'Confirm your identity to open AankhaNet',
             cancelLabel: 'Use password',
           });
           if (!result.success) {

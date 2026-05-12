@@ -1,10 +1,10 @@
 openapi: 3.1.0
 
 info:
-  title: NetVigil API
+  title: AankhaNet API
   version: 0.1.0
   description: |
-    NetVigil is an AI-driven Network Detection and Response platform for SMBs.
+    AankhaNet is an AI-driven Network Detection and Response platform for SMBs.
     This document is the single source of truth for the contract between the
     FastAPI backend (`services/api`) and the TypeScript clients
     (`packages/web`, `packages/mobile`). Generated TypeScript types live in
@@ -20,7 +20,7 @@ info:
 servers:
   - url: http://localhost:8000/api/v1
     description: Local dev (docker-compose)
-  - url: https://staging.netvigil.example/api/v1
+  - url: https://staging.aankhanet.example/api/v1
     description: Staging (AWS ECS)
 
 tags:

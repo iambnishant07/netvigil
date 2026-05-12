@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import type { IncidentStatus } from '@netvigil/shared-types';
+import type { IncidentStatus } from '@aankhanet/shared-types';
 
 interface Props {
   value: IncidentStatus;

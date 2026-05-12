@@ -2,7 +2,7 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-nativ
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '../lib/query-keys';
 import { apiClient } from '../lib/api-client';
-import type { DeviceList } from '@netvigil/shared-types';
+import type { DeviceList } from '@aankhanet/shared-types';
 
 const FIVE_MIN_MS = 5 * 60 * 1000;
 

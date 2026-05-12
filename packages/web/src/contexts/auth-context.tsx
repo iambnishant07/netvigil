@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import type { AuthResponse, User } from '@netvigil/shared-types';
+import type { AuthResponse, User } from '@aankhanet/shared-types';
 import { clearTokens, storeTokens } from '../lib/api-client.ts';
 
 interface AuthContextValue {

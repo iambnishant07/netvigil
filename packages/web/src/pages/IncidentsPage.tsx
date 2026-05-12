@@ -11,7 +11,7 @@ import { Input } from '../components/ui/Input.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { Spinner } from '../components/ui/Spinner.tsx';
 import { ErrorAlert } from '../components/ui/ErrorAlert.tsx';
-import type { IncidentList, Incident, DeviceList, Severity, IncidentStatus } from '@netvigil/shared-types';
+import type { IncidentList, Incident, DeviceList, Severity, IncidentStatus } from '@aankhanet/shared-types';
 
 const SEVERITY_OPTIONS = [
   { value: 'critical', label: 'Critical' },

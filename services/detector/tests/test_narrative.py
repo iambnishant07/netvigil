@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from netvigil_detector.narrative import generate
+from aankhanet_detector.narrative import generate
 
 
 FEATURES = [

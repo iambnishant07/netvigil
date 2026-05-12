@@ -9,8 +9,8 @@ RUN pip install --no-cache-dir uv
 # without the real source. Layer only re-runs when pyproject.toml changes.
 # --extra-index-url prevents uv from pulling CUDA transitive deps for torch.
 COPY pyproject.toml ./
-RUN mkdir -p src/netvigil_detector && \
-    printf '__version__ = "0.0.0"\n' > src/netvigil_detector/__init__.py
+RUN mkdir -p src/aankha_detector && \
+    printf '__version__ = "0.0.0"\n' > src/aankha_detector/__init__.py
 RUN uv pip install --system \
     --extra-index-url https://download.pytorch.org/whl/cpu \
     .
@@ -19,4 +19,4 @@ RUN uv pip install --system \
 COPY src ./src
 RUN uv pip install --system --no-deps .
 
-CMD ["python", "-m", "netvigil_detector.main"]
+CMD ["python", "-m", "aankha_detector.main"]

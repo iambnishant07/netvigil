@@ -5,7 +5,7 @@ import asyncpg
 import pytest
 from httpx import AsyncClient
 
-from netvigil_api.security import uuid7
+from aankhanet_api.security import uuid7
 
 REG = "/api/v1/auth/register"
 INCIDENTS = "/api/v1/incidents"

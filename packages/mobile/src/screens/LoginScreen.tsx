@@ -10,7 +10,7 @@ import { useMutation } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/auth-context';
 import { apiClient, TOKEN_KEY } from '../lib/api-client';
-import type { AuthResponse } from '@netvigil/shared-types';
+import type { AuthResponse } from '@aankhanet/shared-types';
 import type { AuthStackParamList } from '../navigation/AuthNavigator';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -34,7 +34,7 @@ export default function LoginScreen({ navigation }: Props) {
     try {
       const result = await WebBrowser.openAuthSessionAsync(
         `${API_URL}/api/v1/auth/google/mobile`,
-        'netvigil://',
+        'aankhanet://',
       );
       if (result.type !== 'success') return;
       const pairs = result.url.replace(/^[^?]*\?/, '').split('&');
@@ -59,8 +59,8 @@ export default function LoginScreen({ navigation }: Props) {
           id:             qp('user_id'),
           organizationId: qp('org_id'),
           email:          qp('email'),
-          role:           (qp('role') || 'admin') as import('@netvigil/shared-types').UserRole,
-          status:         (qp('status') || 'active') as import('@netvigil/shared-types').UserStatus,
+          role:           (qp('role') || 'admin') as import('@aankhanet/shared-types').UserRole,
+          status:         (qp('status') || 'active') as import('@aankhanet/shared-types').UserStatus,
           mfaEnrolled:    qp('mfa_enrolled') === 'true',
           createdAt:      qp('created_at') || new Date().toISOString(),
         },
@@ -94,7 +94,7 @@ export default function LoginScreen({ navigation }: Props) {
       Alert.alert('Not available', 'Please sign in with your email and password first.');
       return;
     }
-    await LocalAuthentication.authenticateAsync({ promptMessage: 'Sign in to NetVigil' });
+    await LocalAuthentication.authenticateAsync({ promptMessage: 'Sign in to AankhaNet' });
   }
 
   function handleSubmit() {

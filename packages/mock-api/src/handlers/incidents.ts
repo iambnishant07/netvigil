@@ -1,5 +1,5 @@
 import { http, HttpResponse, ws } from 'msw';
-import type { components } from '@netvigil/shared-types';
+import type { components } from '@aankhanet/shared-types';
 
 const BASE = 'http://localhost:8000/api/v1';
 

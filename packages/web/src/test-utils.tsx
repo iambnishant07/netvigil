@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import { AuthProvider } from './contexts/auth-context.tsx';
-import type { User } from '@netvigil/shared-types';
+import type { User } from '@aankhanet/shared-types';
 
 export const TEST_USER: User = {
   id: '018e1234-0000-7000-8000-000000000001',

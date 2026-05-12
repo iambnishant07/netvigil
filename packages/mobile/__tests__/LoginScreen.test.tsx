@@ -42,7 +42,7 @@ function renderScreen() {
 describe('LoginScreen', () => {
   it('renders sign-in form', () => {
     renderScreen();
-    expect(screen.getByText('Sign in to NetVigil')).toBeTruthy();
+    expect(screen.getByText('Sign in to AankhaNet')).toBeTruthy();
     expect(screen.getByTestId('email-input')).toBeTruthy();
     expect(screen.getByTestId('password-input')).toBeTruthy();
     expect(screen.getByTestId('login-btn')).toBeTruthy();

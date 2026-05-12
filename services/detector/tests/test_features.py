@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from netvigil_detector.features import N_FEATURES, FEATURE_NAMES, extract
+from aankhanet_detector.features import N_FEATURES, FEATURE_NAMES, extract
 
 
 def _flow(**kwargs):

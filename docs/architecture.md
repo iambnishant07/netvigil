@@ -1,4 +1,4 @@
-# NetVigil — Architecture
+# AankhaNet — Architecture
 
 > MITRE ATT&CK version pinned to **v14**. Do not auto-update technique IDs.
 
@@ -8,7 +8,7 @@
 
 ```
                         ┌──────────────────────────────────────────┐
-  SMB network gear      │              NetVigil Platform             │
+  SMB network gear      │              AankhaNet Platform             │
   ─────────────────     │                                            │
   pfSense / MikroTik    │  ┌──────────┐   Kafka    ┌────────────┐  │
   FortiGate / generic ──┼─►│ Ingestor │──────────►│  Detector  │  │
@@ -143,7 +143,7 @@ MFA: TOTP (RFC 6238), 30-second window. Login returns mfa_required=true
 Google OAuth (web): GIS button POSTs id_token to POST /auth/google.
 Google OAuth (mobile): API-proxied flow — app opens browser to
      GET /auth/google/mobile, API handles code exchange, redirects
-     back to netvigil:// deep link with JWT tokens in query params.
+     back to aankhanet:// deep link with JWT tokens in query params.
 ```
 
 ---

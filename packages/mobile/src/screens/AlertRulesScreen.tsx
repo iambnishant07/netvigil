@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '../lib/query-keys';
 import { apiClient } from '../lib/api-client';
 import SeverityBadge from '../components/SeverityBadge';
-import type { AlertRule, AlertRuleCreate, Severity, AlertChannel } from '@netvigil/shared-types';
+import type { AlertRule, AlertRuleCreate, Severity, AlertChannel } from '@aankhanet/shared-types';
 
 const SEVERITIES: Severity[]     = ['critical', 'high', 'medium', 'low', 'info'];
 const CHANNELS: AlertChannel[]   = ['email', 'sms', 'push'];

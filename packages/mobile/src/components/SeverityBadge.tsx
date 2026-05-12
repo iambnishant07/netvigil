@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import type { Severity } from '@netvigil/shared-types';
+import type { Severity } from '@aankhanet/shared-types';
 
 interface Props {
   value: Severity;

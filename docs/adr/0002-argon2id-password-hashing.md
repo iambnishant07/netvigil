@@ -24,4 +24,4 @@ Use **Argon2id** with parameters `m=64 MiB, t=3, p=4` via the `argon2-cffi` Pyth
 
 - Login on a constrained dev machine (≤ 1 GB free RAM) will appear to "hang" for 1–2 seconds — this is normal, not a bug. Do not lower `m` to compensate.
 - bcrypt, PBKDF2, and plain SHA-* are hard-prohibited in CLAUDE.md.
-- The `verify_password` and `hash_password` functions in `services/api/src/netvigil_api/security.py` are the only permitted call sites.
+- The `verify_password` and `hash_password` functions in `services/api/src/aankha_api/security.py` are the only permitted call sites.

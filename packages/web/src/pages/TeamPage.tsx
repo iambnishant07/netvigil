@@ -6,7 +6,7 @@ import { usePermission, useRole } from '../lib/permissions.ts';
 import { Spinner } from '../components/ui/Spinner.tsx';
 import { ErrorAlert } from '../components/ui/ErrorAlert.tsx';
 import { Badge } from '../components/ui/Badge.tsx';
-import type { OrgUser } from '@netvigil/shared-types';
+import type { OrgUser } from '@aankhanet/shared-types';
 
 const ROLES = [
   'super_admin', 'admin', 'senior_analyst', 'analyst',

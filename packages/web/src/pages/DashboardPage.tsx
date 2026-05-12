@@ -15,7 +15,7 @@ import { apiClient } from '../lib/api-client.ts';
 import { Card } from '../components/ui/Card.tsx';
 import { SeverityBadge, StatusBadge } from '../components/ui/Badge.tsx';
 import { Spinner } from '../components/ui/Spinner.tsx';
-import type { DashboardKpis, IncidentList } from '@netvigil/shared-types';
+import type { DashboardKpis, IncidentList } from '@aankhanet/shared-types';
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;

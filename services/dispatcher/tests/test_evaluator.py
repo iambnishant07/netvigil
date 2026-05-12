@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from netvigil_dispatcher.evaluator import matching_rules
+from aankhanet_dispatcher.evaluator import matching_rules
 
 
 def _incident(severity: str = "high", mitre: str = "T1046") -> dict:

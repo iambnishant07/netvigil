@@ -1,9 +1,9 @@
-# NetVigil — AI-driven Network Detection and Response
+# AankhaNet — AI-driven Network Detection and Response
 
 > Capstone project for **NIT3003 / NIT3004** at Victoria University.  
 > Built by a three-person team: Networks & Systems · Cybersecurity · Mobile App Development.
 
-NetVigil is a lightweight NDR platform for Australian small and medium-sized businesses. It ingests Syslog, NetFlow v9, and pcap from SMB network gear, runs an AI ensemble to detect anomalies, maps findings to MITRE ATT&CK, and delivers real-time alerts to a web dashboard and a mobile SOC companion app.
+AankhaNet is a lightweight NDR platform for Australian small and medium-sized businesses. It ingests Syslog, NetFlow v9, and pcap from SMB network gear, runs an AI ensemble to detect anomalies, maps findings to MITRE ATT&CK, and delivers real-time alerts to a web dashboard and a mobile SOC companion app.
 
 ---
 
@@ -11,16 +11,16 @@ NetVigil is a lightweight NDR platform for Australian small and medium-sized bus
 
 | Surface | URL |
 |---------|-----|
-| Web dashboard | <https://netvigil-lime.vercel.app> |
-| REST API | <https://netvigil-api.up.railway.app/api/v1> |
-| OpenAPI docs | <https://netvigil-api.up.railway.app/docs> |
+| Web dashboard | <https://aankhanet-lime.vercel.app> |
+| REST API | <https://aankhanet-api.up.railway.app/api/v1> |
+| OpenAPI docs | <https://aankhanet-api.up.railway.app/docs> |
 
 ---
 
 ## Repository layout
 
 ```
-netvigil/
+aankhanet/
 ├── docs/
 │   ├── openapi.yaml          # API contract — single source of truth
 │   ├── architecture.md       # System design and data-flow
@@ -87,7 +87,7 @@ docker compose up -d postgres redis kafka influxdb
 cd services/api
 uv sync
 uv run alembic upgrade head
-uv run uvicorn netvigil_api.main:app --reload
+uv run uvicorn aankha_api.main:app --reload
 # → http://localhost:8000
 ```
 
@@ -154,26 +154,26 @@ Exposed ports:
 ```bash
 cd services/api
 docker compose up -d postgres   # tests need a real DB
-uv run pytest --cov=netvigil_api --cov-report=term-missing
+uv run pytest --cov=aankha_api --cov-report=term-missing
 # target: ≥ 70% line coverage
 ```
 
 ```bash
 # Detector (no external deps)
 cd services/detector
-uv run pytest --cov=netvigil_detector --cov-report=term-missing
+uv run pytest --cov=aankha_detector --cov-report=term-missing
 ```
 
 ```bash
 # Dispatcher
 cd services/dispatcher
-uv run pytest --cov=netvigil_dispatcher --cov-report=term-missing
+uv run pytest --cov=aankha_dispatcher --cov-report=term-missing
 ```
 
 ```bash
 # Ingestor
 cd services/ingestor
-uv run pytest --cov=netvigil_ingestor --cov-report=term-missing
+uv run pytest --cov=aankha_ingestor --cov-report=term-missing
 ```
 
 ### Frontend (TypeScript)

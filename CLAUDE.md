@@ -1,4 +1,4 @@
-# NetVigil — Claude Code Operating Manual
+# AankhaNet — Claude Code Operating Manual
 
 > Read this file at the start of every session. It is the single source of
 > truth for project conventions. If a request conflicts with what is written
@@ -6,7 +6,7 @@
 
 ## 1. What we are building
 
-**NetVigil** is an AI-driven Network Detection and Response (NDR) platform
+**AankhaNet** is an AI-driven Network Detection and Response (NDR) platform
 targeted at Australian small and medium-sized businesses. It is the capstone
 project for NIT3003/NIT3004 at Victoria University, built by a three-person
 team: Networks & Systems (lead), Cybersecurity, and Mobile App Development.
@@ -29,7 +29,7 @@ This is a **pnpm workspaces monorepo** for the TypeScript code, with a
 sibling Python project for the backend and ML workers.
 
 ```
-netvigil/
+aankhanet/
 ├── CLAUDE.md                  # this file
 ├── README.md
 ├── pnpm-workspace.yaml
@@ -41,11 +41,11 @@ netvigil/
 │   ├── architecture.md
 │   └── adr/                   # one file per architecture decision
 ├── packages/
-│   ├── shared-types/          # @netvigil/shared-types — TS types generated
+│   ├── shared-types/          # @aankhanet/shared-types — TS types generated
 │   │                          # from openapi.yaml; never edit by hand
-│   ├── web/                   # @netvigil/web — Vite + React 18 + TS + Tailwind
-│   ├── mobile/                # @netvigil/mobile — Expo + React Native + TS
-│   └── mock-api/              # @netvigil/mock-api — MSW handlers for dev
+│   ├── web/                   # @aankhanet/web — Vite + React 18 + TS + Tailwind
+│   ├── mobile/                # @aankhanet/mobile — Expo + React Native + TS
+│   └── mock-api/              # @aankhanet/mock-api — MSW handlers for dev
 └── services/
     ├── api/                   # FastAPI gateway (Python 3.12)
     ├── ingestor/              # Syslog/NetFlow/pcap collectors (Python)

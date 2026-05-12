@@ -4,15 +4,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB:       netvigil
-      POSTGRES_USER:     netvigil
+      POSTGRES_DB:       aankhanet
+      POSTGRES_USER:     aankhanet
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U netvigil -d netvigil"]
+      test: ["CMD-SHELL", "pg_isready -U aankhanet -d aankhanet"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -64,9 +64,9 @@ services:
       - "8086:8086"
     environment:
       DOCKER_INFLUXDB_INIT_MODE:         setup
-      DOCKER_INFLUXDB_INIT_USERNAME:     netvigil
+      DOCKER_INFLUXDB_INIT_USERNAME:     aankhanet
       DOCKER_INFLUXDB_INIT_PASSWORD:     ${INFLUXDB_PASSWORD:-devpassword}
-      DOCKER_INFLUXDB_INIT_ORG:          netvigil
+      DOCKER_INFLUXDB_INIT_ORG:          aankhanet
       DOCKER_INFLUXDB_INIT_BUCKET:       netflow
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN:  ${INFLUXDB_TOKEN:-dev-influx-token-change-in-prod}
     volumes:
@@ -87,14 +87,14 @@ services:
     environment:
       POSTGRES_HOST:              postgres
       POSTGRES_PORT:              "5432"
-      POSTGRES_DB:                netvigil
-      POSTGRES_USER:              netvigil
+      POSTGRES_DB:                aankhanet
+      POSTGRES_USER:              aankhanet
       POSTGRES_PASSWORD:          ${POSTGRES_PASSWORD:-devpassword}
       REDIS_URL:                  redis://redis:6379
       KAFKA_BOOTSTRAP_SERVERS:    kafka:9094
       INFLUXDB_URL:               http://influxdb:8086
       INFLUXDB_TOKEN:             ${INFLUXDB_TOKEN:-dev-influx-token-change-in-prod}
-      INFLUXDB_ORG:               netvigil
+      INFLUXDB_ORG:               aankhanet
       INFLUXDB_BUCKET:            netflow
       JWT_PRIVATE_KEY:            ${JWT_PRIVATE_KEY}
       JWT_PUBLIC_KEY:             ${JWT_PUBLIC_KEY}
@@ -117,8 +117,8 @@ services:
     environment:
       POSTGRES_HOST:              postgres
       POSTGRES_PORT:              "5432"
-      POSTGRES_DB:                netvigil
-      POSTGRES_USER:              netvigil
+      POSTGRES_DB:                aankhanet
+      POSTGRES_USER:              aankhanet
       POSTGRES_PASSWORD:          ${POSTGRES_PASSWORD:-devpassword}
       KAFKA_BOOTSTRAP_SERVERS:    kafka:9094
     depends_on:
@@ -136,13 +136,13 @@ services:
     environment:
       POSTGRES_HOST:              postgres
       POSTGRES_PORT:              "5432"
-      POSTGRES_DB:                netvigil
-      POSTGRES_USER:              netvigil
+      POSTGRES_DB:                aankhanet
+      POSTGRES_USER:              aankhanet
       POSTGRES_PASSWORD:          ${POSTGRES_PASSWORD:-devpassword}
       KAFKA_BOOTSTRAP_SERVERS:    kafka:9094
       INFLUXDB_URL:               http://influxdb:8086
       INFLUXDB_TOKEN:             ${INFLUXDB_TOKEN:-dev-influx-token-change-in-prod}
-      INFLUXDB_ORG:               netvigil
+      INFLUXDB_ORG:               aankhanet
       INFLUXDB_BUCKET:            netflow
       ANTHROPIC_API_KEY:          ${ANTHROPIC_API_KEY:-}
     depends_on:
@@ -162,15 +162,15 @@ services:
     environment:
       POSTGRES_HOST:              postgres
       POSTGRES_PORT:              "5432"
-      POSTGRES_DB:                netvigil
-      POSTGRES_USER:              netvigil
+      POSTGRES_DB:                aankhanet
+      POSTGRES_USER:              aankhanet
       POSTGRES_PASSWORD:          ${POSTGRES_PASSWORD:-devpassword}
       KAFKA_BOOTSTRAP_SERVERS:    kafka:9094
       SMTP_HOST:                  ${SMTP_HOST:-localhost}
       SMTP_PORT:                  ${SMTP_PORT:-587}
       SMTP_USER:                  ${SMTP_USER:-}
       SMTP_PASSWORD:              ${SMTP_PASSWORD:-}
-      ALERT_FROM_EMAIL:           ${ALERT_FROM_EMAIL:-alerts@netvigil.local}
+      ALERT_FROM_EMAIL:           ${ALERT_FROM_EMAIL:-alerts@aankhanet.local}
       TWILIO_ACCOUNT_SID:         ${TWILIO_ACCOUNT_SID:-}
       TWILIO_AUTH_TOKEN:          ${TWILIO_AUTH_TOKEN:-}
       TWILIO_FROM_NUMBER:         ${TWILIO_FROM_NUMBER:-}
@@ -189,4 +189,4 @@ volumes:
 
 networks:
   default:
-    name: netvigil
+    name: aankhanet

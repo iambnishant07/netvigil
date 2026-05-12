@@ -9,7 +9,7 @@ import { Select } from '../components/ui/Select.tsx';
 import { Card } from '../components/ui/Card.tsx';
 import { Spinner } from '../components/ui/Spinner.tsx';
 import { ErrorAlert } from '../components/ui/ErrorAlert.tsx';
-import type { DeviceList, DeviceCreate, DeviceVendor, DeviceProtocol } from '@netvigil/shared-types';
+import type { DeviceList, DeviceCreate, DeviceVendor, DeviceProtocol } from '@aankhanet/shared-types';
 
 const VENDOR_OPTIONS: { value: DeviceVendor; label: string }[] = [
   { value: 'pfsense',       label: 'pfSense'         },

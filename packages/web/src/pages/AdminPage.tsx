@@ -5,7 +5,7 @@ import { apiClient } from '../lib/api-client.ts';
 import { Spinner } from '../components/ui/Spinner.tsx';
 import { ErrorAlert } from '../components/ui/ErrorAlert.tsx';
 import { Badge } from '../components/ui/Badge.tsx';
-import type { AdminOrg, AdminUser } from '@netvigil/shared-types';
+import type { AdminOrg, AdminUser } from '@aankhanet/shared-types';
 
 const ROLES = [
   'super_admin', 'admin', 'senior_analyst', 'analyst',

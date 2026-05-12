@@ -20,8 +20,8 @@ def _db_url() -> str:
         return url
     host = os.getenv("POSTGRES_HOST", "localhost")
     port = os.getenv("POSTGRES_PORT", "5432")
-    db   = os.getenv("POSTGRES_DB",   "netvigil")
-    user = os.getenv("POSTGRES_USER", "netvigil")
+    db   = os.getenv("POSTGRES_DB",   "aankhanet")
+    user = os.getenv("POSTGRES_USER", "aankhanet")
     pw   = os.getenv("POSTGRES_PASSWORD", "devpassword")
     return f"postgresql+psycopg2://{user}:{pw}@{host}:{port}/{db}"
 

@@ -45,21 +45,21 @@ os.environ["JWT_PUBLIC_KEY"]  = _REAL_PUB.replace("\n",  "\\n")
 
 # Re-import settings after env override
 import importlib
-import netvigil_api.config as _cfg_mod
-import netvigil_api.database as _db_mod
-import netvigil_api.security as _sec_mod
+import aankhanet_api.config as _cfg_mod
+import aankhanet_api.database as _db_mod
+import aankhanet_api.security as _sec_mod
 _cfg_mod.settings = _cfg_mod.Settings()
 importlib.reload(_sec_mod)
 
-from netvigil_api.main import app  # noqa: E402
+from aankhanet_api.main import app  # noqa: E402
 
 
 DB_URL = (
-    f"postgresql://{os.getenv('POSTGRES_USER','netvigil')}:"
+    f"postgresql://{os.getenv('POSTGRES_USER','aankhanet')}:"
     f"{os.getenv('POSTGRES_PASSWORD','devpassword')}@"
     f"{os.getenv('POSTGRES_HOST','localhost')}:"
     f"{os.getenv('POSTGRES_PORT','5432')}/"
-    f"{os.getenv('POSTGRES_DB','netvigil')}"
+    f"{os.getenv('POSTGRES_DB','aankhanet')}"
 )
 
 

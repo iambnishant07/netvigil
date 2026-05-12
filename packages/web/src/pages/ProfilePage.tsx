@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button.tsx';
 import { Card } from '../components/ui/Card.tsx';
 import { Badge } from '../components/ui/Badge.tsx';
 import { ErrorAlert } from '../components/ui/ErrorAlert.tsx';
-import type { User } from '@netvigil/shared-types';
+import type { User } from '@aankhanet/shared-types';
 
 function formatRole(role: string): string {
   return role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());

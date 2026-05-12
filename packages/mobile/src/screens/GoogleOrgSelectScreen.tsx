@@ -7,7 +7,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/auth-context';
 import { apiClient } from '../lib/api-client';
-import type { AuthResponse } from '@netvigil/shared-types';
+import type { AuthResponse } from '@aankhanet/shared-types';
 import type { AuthStackParamList } from '../navigation/AuthNavigator';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'GoogleOrgSelect'>;

@@ -9,7 +9,7 @@ import { Input } from '../components/ui/Input.tsx';
 import { Select } from '../components/ui/Select.tsx';
 import { Card } from '../components/ui/Card.tsx';
 import { ErrorAlert } from '../components/ui/ErrorAlert.tsx';
-import type { AuthResponse } from '@netvigil/shared-types';
+import type { AuthResponse } from '@aankhanet/shared-types';
 
 const GOOGLE_CLIENT_ID = import.meta.env['VITE_GOOGLE_CLIENT_ID'] as string | undefined;
 const REMEMBER_KEY = 'nv_remember_email';
@@ -172,7 +172,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-2">
           <img
             src="/LandingPageBG.png"
-            alt="NetVigil — Detect · Monitor · Protect"
+            alt="AankhaNet — Detect · Monitor · Protect"
             className="w-full max-w-xs object-contain"
             draggable={false}
           />

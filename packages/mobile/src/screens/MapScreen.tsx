@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, ActivityIndicator, Platform, ScrollView, Toucha
 import * as WebBrowser from 'expo-web-browser';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../lib/api-client';
-import type { ThreatArc, GeoPoint } from '@netvigil/shared-types';
+import type { ThreatArc, GeoPoint } from '@aankhanet/shared-types';
 
 interface ThreatMap {
   center: GeoPoint;
@@ -32,7 +32,7 @@ const SEV_ORDER = ['critical', 'high', 'medium', 'low', 'info'];
 
 const WEB_URL = (process.env['EXPO_PUBLIC_API_URL'] ?? '')
   .replace('/api/v1', '')
-  .replace('netvigil-api.up.railway.app', 'netvigil-lime.vercel.app');
+  .replace('aankhanet-api.up.railway.app', 'aankhanet-lime.vercel.app');
 
 function ThreatSummary({ arcs }: { arcs: ThreatArc[] }) {
   // Count by severity

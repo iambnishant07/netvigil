@@ -1,11 +1,11 @@
 /**
  * RBAC permission registry for the web client.
- * Must stay in sync with services/api/src/netvigil_api/permissions.py
+ * Must stay in sync with services/api/src/aankhanet_api/permissions.py
  */
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from './api-client.ts';
 import { qk } from './query-keys.ts';
-import type { User } from '@netvigil/shared-types';
+import type { User } from '@aankhanet/shared-types';
 
 const ALL_PERMISSIONS = [
   'incidents:read', 'incidents:write', 'incidents:acknowledge', 'incidents:export',

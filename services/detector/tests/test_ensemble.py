@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from netvigil_detector.ensemble import LABELS, load_models, score
-from netvigil_detector.features import N_FEATURES
+from aankhanet_detector.ensemble import LABELS, load_models, score
+from aankhanet_detector.features import N_FEATURES
 
 
 def _record(**kwargs):

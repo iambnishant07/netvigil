@@ -9,7 +9,7 @@ import { Card } from '../components/ui/Card.tsx';
 import { Select } from '../components/ui/Select.tsx';
 import { Spinner } from '../components/ui/Spinner.tsx';
 import { ErrorAlert } from '../components/ui/ErrorAlert.tsx';
-import type { Incident, IncidentStatus, Severity } from '@netvigil/shared-types';
+import type { Incident, IncidentStatus, Severity } from '@aankhanet/shared-types';
 
 const STATUS_OPTIONS = [
   { value: 'open',           label: 'Open'           },

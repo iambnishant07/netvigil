@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "NetVigil",
-    "slug": "netvigil",
+    "name": "AankhaNet",
+    "slug": "aankhanet",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "netvigil",
+    "scheme": "aankhanet",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
@@ -13,14 +13,14 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "au.edu.vu.netvigil"
+      "bundleIdentifier": "au.edu.vu.aankhanet"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0f172a"
       },
-      "package": "au.edu.vu.netvigil",
+      "package": "au.edu.vu.aankhanet",
       "googleServicesFile": "$GOOGLE_SERVICES_JSON",
       "permissions": [
         "android.permission.USE_BIOMETRIC",

@@ -3,5 +3,5 @@ builder = "dockerfile"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "python -m netvigil_detector.main"
+startCommand = "python -m aankhanet_detector.main"
 healthcheckTimeout = 300

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import struct
 
-from netvigil_ingestor.collectors.netflow import _ip4, _parse_template, _parse_data, _FIELD_NAMES
+from aankhanet_ingestor.collectors.netflow import _ip4, _parse_template, _parse_data, _FIELD_NAMES
 
 
 # ── Helper utilities ──────────────────────────────────────────────────────────

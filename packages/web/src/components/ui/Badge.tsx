@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { Severity, IncidentStatus } from '@netvigil/shared-types';
+import type { Severity, IncidentStatus } from '@aankhanet/shared-types';
 
 const COLOR_CLS: Record<string, string> = {
   red:    'bg-red-900 text-red-300',

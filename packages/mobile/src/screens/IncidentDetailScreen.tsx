@@ -9,7 +9,7 @@ import { qk } from '../lib/query-keys';
 import { apiClient } from '../lib/api-client';
 import SeverityBadge from '../components/SeverityBadge';
 import StatusBadge from '../components/StatusBadge';
-import type { Incident, IncidentStatus, Severity } from '@netvigil/shared-types';
+import type { Incident, IncidentStatus, Severity } from '@aankhanet/shared-types';
 import type { IncidentsStackParamList } from '../navigation/AppNavigator';
 
 type Props = NativeStackScreenProps<IncidentsStackParamList, 'IncidentDetail'>;

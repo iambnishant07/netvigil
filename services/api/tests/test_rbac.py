@@ -5,7 +5,7 @@ import asyncpg
 import pytest
 from httpx import AsyncClient
 
-from netvigil_api.security import create_access_token, hash_password, uuid7
+from aankhanet_api.security import create_access_token, hash_password, uuid7
 
 REG = "/api/v1/auth/register"
 USERS = "/api/v1/users"
@@ -267,7 +267,7 @@ async def test_audit_logs_written_after_user_patch(
     token, _, org_id = await _setup(client)
     target_tok = await _create_user_with_role(pg_pool, org_id, "analyst")
     # decode target user_id from the token payload
-    from netvigil_api.security import decode_access_token
+    from aankhanet_api.security import decode_access_token
     target_id = decode_access_token(target_tok)["sub"]
 
     await client.patch(
