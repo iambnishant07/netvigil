@@ -169,8 +169,6 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4">
       <div className="w-full max-w-sm space-y-6">
-        <div className="flex flex-col items-center gap-2">
-
         <Card>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <Input
