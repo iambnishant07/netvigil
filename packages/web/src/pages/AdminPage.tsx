@@ -2,10 +2,65 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '../lib/query-keys.ts';
 import { apiClient } from '../lib/api-client.ts';
+import { usePermission } from '../lib/permissions.ts';
 import { Spinner } from '../components/ui/Spinner.tsx';
 import { ErrorAlert } from '../components/ui/ErrorAlert.tsx';
 import { Badge } from '../components/ui/Badge.tsx';
 import type { AdminOrg, AdminUser } from '@aankhanet/shared-types';
+
+interface SeedResult { seeded: { incidents: number; devices: number; alertRules: number } }
+
+function SimulateAttackPanel() {
+  const queryClient = useQueryClient();
+  const [lastResult, setLastResult] = useState<SeedResult['seeded'] | null>(null);
+
+  const seed = useMutation({
+    mutationFn: () => apiClient.post<SeedResult>('/seed', {}),
+    onSuccess: (data) => {
+      setLastResult(data.seeded);
+      void queryClient.invalidateQueries({ queryKey: qk.dashboard.kpis() });
+      void queryClient.invalidateQueries({ queryKey: qk.incidents.list({}) });
+    },
+  });
+
+  function handleSimulate() {
+    if (!window.confirm('This will insert 20 demo incidents into your organisation. Continue?')) return;
+    setLastResult(null);
+    seed.mutate();
+  }
+
+  return (
+    <div className="rounded-xl border border-red-800/50 bg-red-950/20 p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-sm font-semibold text-red-300">Simulate Attack</h2>
+          <p className="mt-1 text-xs text-slate-400 max-w-lg">
+            Seeds 20 realistic incidents (port scans, DDoS, brute-force, C2, web attacks) into this
+            organisation for demo and training purposes. Re-running adds another batch.
+            Only visible to super-admin.
+          </p>
+          {lastResult && (
+            <p className="mt-2 text-xs text-emerald-400">
+              Seeded: {lastResult.incidents} incidents · {lastResult.devices} devices · {lastResult.alertRules} alert rules
+            </p>
+          )}
+          {seed.isError && (
+            <p className="mt-2 text-xs text-red-400">{(seed.error as Error).message}</p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={handleSimulate}
+          disabled={seed.isPending}
+          className="flex-shrink-0 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white
+                     hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {seed.isPending ? 'Simulating…' : 'Simulate Attack'}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const ROLES = [
   'super_admin', 'admin', 'senior_analyst', 'analyst',
@@ -37,6 +92,7 @@ type View = 'orgs' | 'users';
 
 export default function AdminPage() {
   const queryClient = useQueryClient();
+  const isSuperAdmin = usePermission('system:admin');
   const [view,        setView]        = useState<View>('orgs');
   const [selectedOrg, setSelectedOrg] = useState<AdminOrg | null>(null);
   const [editingUser, setEditingUser] = useState<string | null>(null);
@@ -93,6 +149,8 @@ export default function AdminPage() {
         <h1 className="text-xl font-semibold text-slate-100">System Administration</h1>
         <p className="text-sm text-slate-400 mt-0.5">Super-admin view — all organisations and users</p>
       </div>
+
+      {isSuperAdmin && <SimulateAttackPanel />}
 
       {/* View toggle */}
       <div className="flex gap-1 rounded-lg bg-slate-800/60 p-1 border border-slate-700 w-fit">
