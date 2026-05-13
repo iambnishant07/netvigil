@@ -129,7 +129,7 @@ function setupLayers(map: mapboxgl.Map) {
       source: `arcs-${sev}`,
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        'line-color':   SEV_COLOR[sev],
+        'line-color':   SEV_COLOR[sev] as string,
         'line-width':   2,
         'line-opacity': 0.85,
       },
@@ -146,7 +146,7 @@ function setupLayers(map: mapboxgl.Map) {
       source: `dots-${sev}`,
       paint: {
         'circle-radius':       4,
-        'circle-color':        SEV_COLOR[sev],
+        'circle-color':        SEV_COLOR[sev] as string,
         'circle-opacity':      0.9,
         'circle-stroke-width': 1,
         'circle-stroke-color': '#000',

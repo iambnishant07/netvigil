@@ -127,7 +127,8 @@ interface AttackBoxProps {
 }
 
 function AttackBox({ label, count, variant }: AttackBoxProps) {
-  const { text, border } = ATTACK_CLS[variant];
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const { text, border } = ATTACK_CLS[variant]!;
   return (
     <div className={`bg-navy-panel border border-navy-border rounded-lg p-3 flex flex-col gap-1 min-w-0 border-t-2 ${border}`}>
       <p className={`text-[10px] font-semibold uppercase tracking-wide truncate ${text}`}>
