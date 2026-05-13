@@ -48,7 +48,7 @@ describe('DashboardPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/top internal talkers/i)).toBeInTheDocument();
     });
-    expect(screen.getByText('10.0.0.5')).toBeInTheDocument();
+    expect(screen.getAllByText('10.0.0.5').length).toBeGreaterThan(0);
   });
 
   it('renders top external destinations', async () => {

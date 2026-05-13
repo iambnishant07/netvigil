@@ -39,6 +39,15 @@ const SEV_TXT: Record<string, string> = {
   info:     'text-blue-500',
 };
 
+// Filled dot colour per severity (used in attack feed)
+const SEV_DOT: Record<string, string> = {
+  critical: 'bg-red-500',
+  high:     'bg-orange-500',
+  medium:   'bg-yellow-500',
+  low:      'bg-green-500',
+  info:     'bg-blue-500',
+};
+
 // Hex values still needed for SVG fill/stroke attributes (not style props)
 const SEV_HEX: Record<string, string> = {
   critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#22c55e', info: '#3b82f6',
@@ -219,11 +228,66 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className={`${P} p-3`}>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Global Threat Map
-          </p>
-          <ThreatMap threatMap={threatMap} className="h-72" />
+        {/* ── Global Threat Map + Live Attack Feed ── */}
+        <div className={`${P} p-3 flex flex-col`}>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Global Threat Map
+            </p>
+            <span className="text-[10px] text-slate-600">
+              {threatMap?.arcs.length ?? 0} active arcs
+            </span>
+          </div>
+
+          <div className="flex gap-3 h-80">
+            {/* Canvas map */}
+            <ThreatMap threatMap={threatMap} className="flex-1 min-w-0 h-full" />
+
+            {/* Scrollable live attack feed */}
+            <div className="w-60 flex flex-col border-l border-navy-border pl-3 min-h-0">
+              <div className="flex items-center justify-between pb-1.5 mb-1 border-b border-navy-border flex-shrink-0">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                  Live Attack Feed
+                </span>
+                <span className="text-[9px] text-slate-600">
+                  {recentIncidents?.items.length ?? 0} events
+                </span>
+              </div>
+              <div className="overflow-y-auto flex-1 space-y-0 pr-0.5">
+                {(recentIncidents?.items ?? []).map((inc) => (
+                  <Link
+                    key={inc.id}
+                    to={`/incidents/${inc.id}`}
+                    className="block py-1.5 border-b border-navy-border/40 hover:bg-slate-800/40 -mx-1 px-1 rounded transition-colors"
+                  >
+                    {/* Source → Destination */}
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${SEV_DOT[inc.severity] ?? 'bg-slate-500'}`} />
+                      <span className="font-mono text-[11px] text-slate-200 tracking-tight">
+                        {inc.sourceIp}
+                      </span>
+                      <span className="text-slate-600 text-[10px]">→</span>
+                      <span className="font-mono text-[10px] text-slate-500 truncate">
+                        {inc.destinationIp}
+                      </span>
+                    </div>
+                    {/* Attack label + time */}
+                    <div className="pl-3 flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-slate-400 truncate">
+                        {inc.attackLabel.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-[9px] text-slate-600 flex-shrink-0">
+                        {formatTs(inc.detectedAt)}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+                {!recentIncidents?.items.length && (
+                  <p className="text-[11px] text-slate-600 pt-4 text-center">No active attacks</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className={P}>
