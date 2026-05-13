@@ -15,21 +15,9 @@ import { qk } from '../lib/query-keys.ts';
 import { apiClient } from '../lib/api-client.ts';
 import { SeverityBadge, StatusBadge } from '../components/ui/Badge.tsx';
 import { Spinner } from '../components/ui/Spinner.tsx';
+import { ThreatMap } from '../components/ThreatMap.tsx';
+import type { ThreatMapData } from '../components/ThreatMap.tsx';
 import type { DashboardKpis, IncidentList } from '@aankhanet/shared-types';
-
-// ─── inline types ─────────────────────────────────────────────────────────────
-
-interface ThreatArc {
-  from: { lat: number; lng: number };
-  to:   { lat: number; lng: number };
-  count: number;
-  severity: string;
-  sourceCountry: string;
-}
-interface ThreatMapData {
-  center: { lat: number; lng: number };
-  arcs: ThreatArc[];
-}
 interface TrendDay {
   date: string;
   critical: number; high: number; medium: number; low: number; info: number;
@@ -54,10 +42,6 @@ const SEV_TXT: Record<string, string> = {
 // Hex values still needed for SVG fill/stroke attributes (not style props)
 const SEV_HEX: Record<string, string> = {
   critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#22c55e', info: '#3b82f6',
-};
-
-const ARC_HEX: Record<string, string> = {
-  critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#22c55e',
 };
 
 // Tailwind class pairs for each AttackBox variant
@@ -87,18 +71,6 @@ function formatTs(iso: string): string {
   return new Date(iso).toLocaleString('en-AU', {
     day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
   });
-}
-
-function geo(lng: number, lat: number): [number, number] {
-  return [((lng + 180) / 360) * 700, ((90 - lat) / 180) * 320];
-}
-
-function arcPath(sLng: number, sLat: number, eLng: number, eLat: number): string {
-  const [sx, sy] = geo(sLng, sLat);
-  const [ex, ey] = geo(eLng, eLat);
-  const mx = (sx + ex) / 2;
-  const my = Math.min(sy, ey) - 55;
-  return `M ${sx.toFixed(1)},${sy.toFixed(1)} Q ${mx.toFixed(1)},${my.toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}`;
 }
 
 // ─── RiskDonut ────────────────────────────────────────────────────────────────
@@ -142,83 +114,6 @@ function RiskDonut({ kpis }: { kpis: DashboardKpis }) {
         <text x={cx} y={cy + 14} textAnchor="middle" fontSize={9} fill="#64748b">RISK SCORE</text>
       </svg>
       <p className={`text-xs font-bold tracking-widest ${riskColorCls(score)}`}>{label}</p>
-    </div>
-  );
-}
-
-// ─── WorldThreatMap ───────────────────────────────────────────────────────────
-
-const CONTINENTS: Array<{ id: string; d: string }> = [
-  { id: 'na', d: 'M 25,38 L 60,28 L 115,30 L 195,48 L 225,72 L 218,100 L 194,118 L 168,130 L 140,125 L 108,118 L 58,105 L 28,80 Z' },
-  { id: 'sa', d: 'M 148,128 L 190,118 L 245,135 L 280,165 L 270,196 L 235,222 L 214,254 L 200,222 L 198,172 Z' },
-  { id: 'eu', d: 'M 330,58 L 360,52 L 400,55 L 418,68 L 398,88 L 370,93 L 340,88 L 328,75 Z' },
-  { id: 'af', d: 'M 328,92 L 365,82 L 412,88 L 438,105 L 448,142 L 420,202 L 378,218 L 342,208 L 310,172 L 308,138 L 325,118 Z' },
-  { id: 'as', d: 'M 415,58 L 460,42 L 530,35 L 602,40 L 665,58 L 688,82 L 658,112 L 598,132 L 545,152 L 480,158 L 440,142 L 416,122 L 410,90 Z' },
-  { id: 'au', d: 'M 576,218 L 606,183 L 634,180 L 648,210 L 638,228 L 620,222 L 576,218 Z' },
-  { id: 'nz', d: 'M 680,214 L 690,225 L 685,238 L 678,232 Z' },
-];
-
-function WorldThreatMap({ threatMap }: { threatMap: ThreatMapData | undefined }) {
-  const center = threatMap?.center ?? { lat: -33.87, lng: 151.21 };
-  const arcs   = threatMap?.arcs   ?? [];
-  const [cx, cy] = geo(center.lng, center.lat);
-
-  return (
-    <div className={`${P} p-3`}>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-        Global Threat Map
-      </p>
-      <div className="w-full aspect-[700/320]">
-        <svg
-          viewBox="0 0 700 320"
-          className="w-full h-full rounded-sm bg-navy-map"
-          aria-label="World threat map"
-        >
-          <defs>
-            <style>{`
-              @keyframes arcDraw { from { stroke-dashoffset: 500 } to { stroke-dashoffset: 0 } }
-              .t-arc { stroke-dasharray: 500; animation: arcDraw 2s ease-in-out forwards; }
-              @keyframes homePulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
-              .home-dot { animation: homePulse 2s infinite; }
-            `}</style>
-            <radialGradient id="rg" cx="50%" cy="50%" r="50%">
-              <stop offset="0%"   stopColor="#00c8e0" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="#00c8e0" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-
-          {[-60, -30, 0, 30, 60].map((lat) => {
-            const [, y] = geo(0, lat);
-            return <line key={`lat${lat}`} x1={0} y1={y} x2={700} y2={y} stroke="#0d2540" strokeWidth={0.5} />;
-          })}
-          {[-120, -60, 0, 60, 120].map((lng) => {
-            const [x] = geo(lng, 0);
-            return <line key={`lng${lng}`} x1={x} y1={0} x2={x} y2={320} stroke="#0d2540" strokeWidth={0.5} />;
-          })}
-
-          {CONTINENTS.map((c) => (
-            <path key={c.id} d={c.d} fill="#0a2240" stroke="#1a4060" strokeWidth={0.8} />
-          ))}
-
-          {arcs.map((arc, i) => {
-            const d     = arcPath(arc.from.lng, arc.from.lat, arc.to.lng, arc.to.lat);
-            const color = ARC_HEX[arc.severity] ?? '#94a3b8';
-            const [fx, fy] = geo(arc.from.lng, arc.from.lat);
-            return (
-              <g key={i}>
-                <path
-                  d={d} fill="none" stroke={color} strokeWidth={1.5} opacity={0.85}
-                  className={`t-arc arc-d-${i}`}
-                />
-                <circle cx={fx} cy={fy} r={3} fill={color} opacity={0.9} />
-              </g>
-            );
-          })}
-
-          <circle cx={cx} cy={cy} r={22} fill="url(#rg)" />
-          <circle cx={cx} cy={cy} r={5} fill="#00c8e0" className="home-dot" />
-        </svg>
-      </div>
     </div>
   );
 }
@@ -323,7 +218,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <WorldThreatMap threatMap={threatMap} />
+        <div className={`${P} p-3`}>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            Global Threat Map
+          </p>
+          <ThreatMap threatMap={threatMap} className="h-72" />
+        </div>
 
         <div className={P}>
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
