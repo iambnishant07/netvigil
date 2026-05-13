@@ -47,3 +47,26 @@ class ThreatArc(CamelModel):
 class ThreatMap(CamelModel):
     center: GeoPoint
     arcs: list[ThreatArc]
+
+
+class TrendDay(CamelModel):
+    date: str
+    critical: int
+    high: int
+    medium: int
+    low: int
+    info: int
+
+
+class TrendData(CamelModel):
+    days: list[TrendDay]
+
+
+class AttackTypes(CamelModel):
+    c2_beaconing: int
+    brute_force: int
+    ddos: int
+    port_scan: int
+    data_exfil: int
+    lateral_movement: int
+    unknown_anomaly: int

@@ -7,7 +7,16 @@ from fastapi import APIRouter, Query
 from aankhanet_api import database as db
 from aankhanet_api.deps import require_permission
 from aankhanet_api.repositories import incidents as inc_repo
-from aankhanet_api.schemas.dashboard import DashboardKpis, GeoPoint, SeverityCount, ThreatArc, ThreatMap
+from aankhanet_api.schemas.dashboard import (
+    AttackTypes,
+    DashboardKpis,
+    GeoPoint,
+    SeverityCount,
+    ThreatArc,
+    ThreatMap,
+    TrendData,
+    TrendDay,
+)
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -103,3 +112,110 @@ async def get_threat_map(
         center = arcs[0].to
 
     return ThreatMap(center=center, arcs=arcs)
+
+
+@router.get("/trend", response_model=TrendData, response_model_by_alias=True)
+async def get_trend(current_user: _ReadDashboard) -> TrendData:
+    async with db.get_connection() as conn:
+        await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", current_user["org"])
+        rows = await conn.fetch(
+            """
+            SELECT
+                (detected_at AT TIME ZONE 'Australia/Sydney')::date AS day,
+                severity,
+                count(*)::int AS cnt
+            FROM incidents
+            WHERE organization_id = $1::uuid
+              AND detected_at > now() - interval '7 days'
+            GROUP BY 1, 2
+            ORDER BY 1
+            """,
+            current_user["org"],
+        )
+
+    # Pivot: {date_str -> {severity -> count}}
+    pivot: dict[str, dict[str, int]] = {}
+    for row in rows:
+        day_str = row["day"].isoformat()
+        pivot.setdefault(day_str, {})
+        pivot[day_str][row["severity"]] = row["cnt"]
+
+    # Emit one entry per day for the past 7 days (fill gaps with zeros)
+    import datetime
+    today = datetime.date.today()
+    days: list[TrendDay] = []
+    for offset in range(6, -1, -1):
+        d = (today - datetime.timedelta(days=offset)).isoformat()
+        counts = pivot.get(d, {})
+        days.append(TrendDay(
+            date=d,
+            critical=counts.get("critical", 0),
+            high=counts.get("high", 0),
+            medium=counts.get("medium", 0),
+            low=counts.get("low", 0),
+            info=counts.get("info", 0),
+        ))
+
+    return TrendData(days=days)
+
+
+# Maps substrings of attack_label (lower-cased) to frontend category keys.
+_ATTACK_LABEL_MAP: list[tuple[str, str]] = [
+    ("beacon",   "c2_beaconing"),
+    ("c&c",      "c2_beaconing"),
+    ("command",  "c2_beaconing"),
+    ("brute",    "brute_force"),
+    ("credential", "brute_force"),
+    ("password", "brute_force"),
+    ("dos",      "ddos"),
+    ("ddos",     "ddos"),
+    ("flood",    "ddos"),
+    ("scan",     "port_scan"),
+    ("probe",    "port_scan"),
+    ("exfil",    "data_exfil"),
+    ("exfiltration", "data_exfil"),
+    ("lateral",  "lateral_movement"),
+    ("pivot",    "lateral_movement"),
+    ("move",     "lateral_movement"),
+]
+
+
+def _classify_attack(label: str) -> str:
+    lower = label.lower()
+    for keyword, category in _ATTACK_LABEL_MAP:
+        if keyword in lower:
+            return category
+    return "unknown_anomaly"
+
+
+@router.get("/attack-types", response_model=AttackTypes, response_model_by_alias=True)
+async def get_attack_types(current_user: _ReadDashboard) -> AttackTypes:
+    async with db.get_connection() as conn:
+        await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", current_user["org"])
+        rows = await conn.fetch(
+            """
+            SELECT attack_label, count(*)::int AS cnt
+            FROM incidents
+            WHERE organization_id = $1::uuid
+            GROUP BY attack_label
+            """,
+            current_user["org"],
+        )
+
+    counts: dict[str, int] = {
+        "c2_beaconing": 0, "brute_force": 0, "ddos": 0,
+        "port_scan": 0, "data_exfil": 0, "lateral_movement": 0, "unknown_anomaly": 0,
+    }
+    for row in rows:
+        key = _classify_attack(row["attack_label"])
+        counts[key] += row["cnt"]
+
+    return AttackTypes(
+        c2_beaconing=counts["c2_beaconing"],
+        brute_force=counts["brute_force"],
+        ddos=counts["ddos"],
+        port_scan=counts["port_scan"],
+        data_exfil=counts["data_exfil"],
+        lateral_movement=counts["lateral_movement"],
+        unknown_anomaly=counts["unknown_anomaly"],
+    )
