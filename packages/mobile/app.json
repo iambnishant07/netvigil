@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "AankhaNet",
-    "slug": "aankhanet",
+    "slug": "netvigil",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "aankhanet",
@@ -37,6 +37,7 @@
       "eas": {
         "projectId": "a81c625a-08ba-4f88-8b49-7d1630c242e9"
       }
-    }
+    },
+    "owner": "iamb.nishant07"
   }
 }
