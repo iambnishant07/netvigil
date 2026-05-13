@@ -57,7 +57,7 @@ async function request<T>(path: string, init?: RequestInit, retry = true): Promi
 
   const res = await fetch(`${BASE}${path}`, { ...(init ?? {}), headers });
 
-  if (res.status === 401 && retry) {
+  if (res.status === 401 && retry && !path.startsWith('/auth/')) {
     const newToken = await tryRefresh();
     const retryHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
