@@ -112,10 +112,8 @@ export default function AppShell() {
       {/* Sidebar */}
       <aside className="flex w-60 flex-shrink-0 flex-col bg-slate-800 border-r border-slate-700">
         {/* Logo */}
-        <div className="flex items-center gap-2 px-5 py-5 border-b border-slate-700">
-          <svg className="h-6 w-6 text-indigo-400" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
-          </svg>
+        <div className="flex items-center gap-2.5 px-4 py-4 border-b border-slate-700">
+          <img src="/favicon.png" alt="AankhaNet" className="h-8 w-8 object-contain" />
           <span className="text-base font-bold text-slate-100 tracking-tight">AankhaNet</span>
         </div>
 

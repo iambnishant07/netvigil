@@ -1,5 +1,5 @@
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useIncidentStream } from '../hooks/use-incident-stream';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -47,10 +47,34 @@ function KpiTile({ label, value, accent = '#e2e8f0' }: KpiTileProps) {
   );
 }
 
+interface SeedResult {
+  seeded: {
+    incidents: number;
+    devices:   number;
+    alertRules: number;
+  };
+}
+
 export default function DashboardScreen() {
   useIncidentStream();
 
-  const navigation = useNavigation<NavProp>();
+  const navigation  = useNavigation<NavProp>();
+  const queryClient = useQueryClient();
+
+  const seedMutation = useMutation({
+    mutationFn: () => apiClient.post<SeedResult>('/seed', {}),
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: qk.incidents.list({}) });
+      void queryClient.invalidateQueries({ queryKey: qk.dashboard.kpis() });
+      Alert.alert(
+        'Attack simulated',
+        `Seeded ${data.seeded.incidents} incidents, ${data.seeded.devices} devices, ${data.seeded.alertRules} alert rules.`,
+      );
+    },
+    onError: (err: Error) => {
+      Alert.alert('Simulation failed', err.message);
+    },
+  });
 
   const { data: kpis, isLoading } = useQuery({
     queryKey: qk.dashboard.kpis(),
@@ -159,6 +183,19 @@ export default function DashboardScreen() {
         )}
       </View>
 
+      {/* Simulate attack */}
+      <TouchableOpacity
+        style={[styles.simulateBtn, seedMutation.isPending && styles.btnDisabled]}
+        onPress={() => seedMutation.mutate()}
+        disabled={seedMutation.isPending}
+        testID="simulate-attack-btn"
+      >
+        {seedMutation.isPending
+          ? <ActivityIndicator color="#fff" />
+          : <Text style={styles.simulateBtnText}>Simulate Attack</Text>
+        }
+      </TouchableOpacity>
+
       {/* Threat map placeholder */}
       <View style={[styles.card, styles.placeholderCard]}>
         <Text style={styles.placeholderText}>Threat Map — requires device build</Text>
@@ -192,6 +229,9 @@ const styles = StyleSheet.create({
   talkerRow:      { flexDirection: 'row', justifyContent: 'space-between' },
   talkerIp:       { fontFamily: 'monospace', fontSize: 13, color: '#cbd5e1' },
   talkerBytes:    { fontSize: 13, color: '#94a3b8' },
-  placeholderCard:{ alignItems: 'center', paddingVertical: 24, borderStyle: 'dashed', borderWidth: 1, borderColor: '#334155' },
-  placeholderText:{ color: '#475569', fontSize: 13 },
+  placeholderCard:  { alignItems: 'center', paddingVertical: 24, borderStyle: 'dashed', borderWidth: 1, borderColor: '#334155' },
+  placeholderText:  { color: '#475569', fontSize: 13 },
+  simulateBtn:      { backgroundColor: '#dc2626', borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
+  btnDisabled:      { opacity: 0.6 },
+  simulateBtnText:  { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

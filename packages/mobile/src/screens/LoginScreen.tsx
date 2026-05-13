@@ -121,6 +121,7 @@ export default function LoginScreen({ navigation }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
+        <Text style={styles.heading}>Sign in to AankhaNet</Text>
 
         <View style={styles.field}>
           <Text style={styles.label}>Email</Text>
@@ -194,6 +195,7 @@ export default function LoginScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: '#0f172a' },
+  heading:      { fontSize: 22, fontWeight: '700', color: '#e2e8f0', textAlign: 'center', marginBottom: 8 },
   inner:        { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 40, gap: 16 },
   title:        { fontSize: 22, fontWeight: '700', color: '#e2e8f0', textAlign: 'center' },
   subtitle:     { fontSize: 13, color: '#64748b', textAlign: 'center', marginBottom: 8 },

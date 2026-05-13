@@ -11,7 +11,7 @@ export default function PendingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-slate-900 bg-[url('/logo-bg.png')] bg-cover bg-center bg-no-repeat px-4">
       <div className="w-full max-w-md text-center space-y-6">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-900/40 border border-amber-700">
           <svg className="h-8 w-8 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>

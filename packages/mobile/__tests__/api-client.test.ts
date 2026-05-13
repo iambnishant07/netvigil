@@ -95,4 +95,67 @@ describe('apiClient', () => {
     });
     await expect(apiClient.get('/protected')).rejects.toThrow('Access denied');
   });
+
+  it('falls back to statusText when error body has no message', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: () => Promise.resolve({}),
+    });
+    await expect(apiClient.get('/fail')).rejects.toThrow('Internal Server Error');
+  });
+
+  it('returns undefined for 204 response', async () => {
+    mockFetch.mockResolvedValue({ ok: true, status: 204, json: () => Promise.resolve() });
+    const result = await apiClient.get('/no-content');
+    expect(result).toBeUndefined();
+  });
+
+  it('retries with refresh token on 401', async () => {
+    (SecureStore.getItemAsync as jest.Mock)
+      .mockResolvedValueOnce('expired-token')   // first call: get access token
+      .mockResolvedValueOnce('refresh-token');   // second call: get refresh token
+
+    mockFetch
+      .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized', json: () => Promise.resolve({}) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ accessToken: 'new-at', refreshToken: 'new-rt' }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ result: 'ok' }) });
+
+    const result = await apiClient.get<{ result: string }>('/guarded');
+    expect(result).toEqual({ result: 'ok' });
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('throws when refresh token is absent', async () => {
+    (SecureStore.getItemAsync as jest.Mock)
+      .mockResolvedValueOnce('expired-token')
+      .mockResolvedValueOnce(null); // no refresh token
+
+    mockFetch.mockResolvedValueOnce({
+      ok: false, status: 401, statusText: 'Unauthorized', json: () => Promise.resolve({}),
+    });
+
+    await expect(apiClient.get('/guarded')).rejects.toThrow('No refresh token');
+  });
+
+  it('throws when refresh request fails', async () => {
+    (SecureStore.getItemAsync as jest.Mock)
+      .mockResolvedValueOnce('expired-token')
+      .mockResolvedValueOnce('refresh-token');
+
+    mockFetch
+      .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized', json: () => Promise.resolve({}) })
+      .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized', json: () => Promise.resolve({}) });
+
+    await expect(apiClient.get('/guarded')).rejects.toThrow('Session expired');
+  });
+
+  it('PUT includes method and body', async () => {
+    await apiClient.put('/items/1', { name: 'updated' });
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ method: 'PUT' }),
+    );
+  });
 });

@@ -167,7 +167,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-slate-900 bg-[url('/logo-bg.png')] bg-cover bg-center bg-no-repeat px-4">
       <div className="w-full max-w-sm space-y-6">
         <Card>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>

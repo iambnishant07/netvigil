@@ -117,7 +117,7 @@ export default function RegisterPage() {
   const orgOptions = (orgs ?? []).map((o) => ({ value: o.id, label: o.name }));
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-slate-900 bg-[url('/logo-bg.png')] bg-cover bg-center bg-no-repeat px-4 py-12">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-slate-100">Create an account</h1>
