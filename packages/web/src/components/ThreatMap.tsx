@@ -192,9 +192,14 @@ function addHomeMarker(map: mapboxgl.Map, lng: number, lat: number) {
 // ─── component ────────────────────────────────────────────────────────────────
 
 export function ThreatMap({ threatMap, className = 'h-80' }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef       = useRef<mapboxgl.Map | null>(null);
-  const animRef      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const containerRef  = useRef<HTMLDivElement>(null);
+  const mapRef        = useRef<mapboxgl.Map | null>(null);
+  const animRef       = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Ref so the load callback always sees the latest data (avoids stale closure)
+  const threatMapRef  = useRef<ThreatMapData | undefined>(threatMap);
+
+  // Keep ref in sync with prop
+  useEffect(() => { threatMapRef.current = threatMap; }, [threatMap]);
 
   // Initialise map once
   useEffect(() => {
@@ -203,7 +208,7 @@ export function ThreatMap({ threatMap, className = 'h-80' }: Props) {
     const map = new mapboxgl.Map({
       container:          containerRef.current,
       style:              'mapbox://styles/mapbox/dark-v11',
-      center:             [134, -28],   // centred on Australia
+      center:             [134, -28],
       zoom:               1.5,
       projection:         { name: 'naturalEarth' },
       attributionControl: false,
@@ -212,7 +217,6 @@ export function ThreatMap({ threatMap, className = 'h-80' }: Props) {
     mapRef.current = map;
 
     map.on('load', () => {
-      // Minimal layer set: keep land/water/admin, hide roads & POI
       const style = map.getStyle();
       style?.layers?.forEach((layer) => {
         const id = layer.id;
@@ -226,9 +230,9 @@ export function ThreatMap({ threatMap, className = 'h-80' }: Props) {
 
       addHomeMarker(map, 151.21, -33.87);
       setupLayers(map);
-      if (threatMap) updateData(map, threatMap.arcs);
+      // Read from ref so we get whatever data has arrived by the time tiles load
+      if (threatMapRef.current) updateData(map, threatMapRef.current.arcs);
 
-      // Animate dash arrays
       let step = 0;
       animRef.current = setInterval(() => {
         SEVERITIES.forEach((sev) => {
@@ -248,7 +252,7 @@ export function ThreatMap({ threatMap, className = 'h-80' }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-push data when threat map changes
+  // Push fresh data whenever the prop updates (handles data arriving after map loads)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !threatMap || !map.isStyleLoaded()) return;
