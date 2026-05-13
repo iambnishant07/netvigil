@@ -24,6 +24,7 @@ async function tryRefresh(): Promise<boolean> {
       body: JSON.stringify({ refreshToken: rt }),
     });
     if (!res.ok) { clearTokens(); return false; }
+
     const data = await res.json() as { accessToken: string; refreshToken: string };
     storeTokens(data.accessToken, data.refreshToken);
     return true;
@@ -38,7 +39,12 @@ async function request<T>(path: string, init?: RequestInit, isRetry = false): Pr
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (tok !== null) headers['Authorization'] = `Bearer ${tok}`;
 
-  const res = await fetch(`${BASE}${path}`, { ...(init ?? {}), headers });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, { ...(init ?? {}), headers });
+  } catch {
+    throw new Error('Network error — check your connection and try again');
+  }
 
   if (res.status === 401 && !isRetry) {
     const refreshed = await tryRefresh();

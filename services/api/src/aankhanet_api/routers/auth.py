@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date as _date
 from urllib.parse import urlencode
 
 import httpx
@@ -195,7 +196,14 @@ async def update_me(body: UpdateProfileRequest, current_user: CurrentUser) -> Us
             vals.append(body.address.strip() or None)
             sets.append(f"address = ${len(vals)}")
         if body.dob is not None:
-            vals.append(body.dob or None)
+            try:
+                dob_val: _date | None = _date.fromisoformat(body.dob) if body.dob else None
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"code": "invalid_dob", "message": "Date of birth must be in YYYY-MM-DD format"},
+                )
+            vals.append(dob_val)
             sets.append(f"dob = ${len(vals)}")
         vals.append(current_user["sub"])
         await conn.execute(  # noqa: S608
