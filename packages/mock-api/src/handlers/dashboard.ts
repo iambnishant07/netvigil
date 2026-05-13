@@ -36,4 +36,30 @@ export const dashboardHandlers = [
       ],
     }),
   ),
+
+  http.get(`${BASE}/dashboard/trend`, () =>
+    HttpResponse.json({
+      days: [
+        { date: '2026-05-07', critical: 2, high: 4, medium: 6, low: 8, info: 3 },
+        { date: '2026-05-08', critical: 1, high: 5, medium: 4, low: 7, info: 4 },
+        { date: '2026-05-09', critical: 3, high: 3, medium: 7, low: 6, info: 5 },
+        { date: '2026-05-10', critical: 1, high: 6, medium: 5, low: 9, info: 2 },
+        { date: '2026-05-11', critical: 4, high: 4, medium: 8, low: 5, info: 6 },
+        { date: '2026-05-12', critical: 2, high: 7, medium: 6, low: 7, info: 3 },
+        { date: '2026-05-13', critical: 2, high: 4, medium: 6, low: 8, info: 3 },
+      ],
+    }),
+  ),
+
+  http.get(`${BASE}/dashboard/attack-types`, () =>
+    HttpResponse.json({
+      c2_beaconing: 127,
+      brute_force: 84,
+      ddos: 43,
+      port_scan: 312,
+      data_exfil: 19,
+      lateral_movement: 56,
+      unknown_anomaly: 28,
+    }),
+  ),
 ];

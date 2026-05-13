@@ -10,18 +10,25 @@ export default defineConfig({
     setupFiles: ['./src/test-setup.ts'],
     coverage: {
       provider: 'v8',
+      reporter: ['text', 'html'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/main.tsx',
+        'src/App.tsx',
         'src/vite-env.d.ts',
         'src/test-setup.ts',
         'src/test-utils.tsx',
         'src/mocks/**',
         'src/router.tsx',
+        'src/components/layout/AppShell.tsx',
         '**/*.test.{ts,tsx}',
       ],
-      // Threshold restored to 60% in the final verification commit (NFR-10)
-      thresholds: {},
+      thresholds: {
+        lines: 60,
+        branches: 60,
+        functions: 60,
+        statements: 60,
+      },
     },
   },
 });

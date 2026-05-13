@@ -1,0 +1,5 @@
+/* Arc animation-delay variants — one class per index position */
+.arc-d-0 { animation-delay: 0s; }
+.arc-d-1 { animation-delay: 0.3s; }
+.arc-d-2 { animation-delay: 0.6s; }
+.arc-d-3 { animation-delay: 0.9s; }

@@ -27,4 +27,5 @@ export const authHandlers = [
   http.post(`${BASE}/auth/login`, () => HttpResponse.json(mockAuthResponse)),
   http.post(`${BASE}/auth/refresh`, () => HttpResponse.json(mockAuthResponse)),
   http.get(`${BASE}/auth/me`, () => HttpResponse.json(mockUser)),
+  http.get(`${BASE}/auth/organizations`, () => HttpResponse.json([])),
 ];

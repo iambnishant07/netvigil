@@ -3,8 +3,10 @@ export const qk = {
     me: () => ['auth', 'me'] as const,
   },
   dashboard: {
-    kpis:      ()             => ['dashboard', 'kpis'] as const,
-    threatMap: (hours: number) => ['dashboard', 'threat-map', hours] as const,
+    kpis:        ()              => ['dashboard', 'kpis'] as const,
+    threatMap:   (hours: number) => ['dashboard', 'threat-map', hours] as const,
+    trend:       ()              => ['dashboard', 'trend'] as const,
+    attackTypes: ()              => ['dashboard', 'attack-types'] as const,
   },
   incidents: {
     list:   (filters: Record<string, unknown>) => ['incidents', 'list', filters] as const,
