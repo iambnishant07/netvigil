@@ -10,32 +10,12 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver = ResizeObserverStub;
 
-// mapbox-gl uses WebGL which is unavailable in jsdom — mock the whole module.
-vi.mock('mapbox-gl', () => {
-  class MockMap {
-    on(event: string, cb: () => void) {
-      if (event === 'load') cb();
-      return this;
-    }
-    off() { return this; }
-    remove() {}
-    isStyleLoaded() { return true; }
-    addSource() {}
-    getSource() { return null; }
-    addLayer() {}
-    getLayer() { return null; }
-    getStyle() { return { layers: [] }; }
-    setLayoutProperty() {}
-    setPaintProperty() {}
-  }
-  class MockMarker {
-    setLngLat() { return this; }
-    addTo() { return this; }
-    remove() {}
-    getElement() { return document.createElement('div'); }
-  }
-  return { default: { Map: MockMap, Marker: MockMarker, accessToken: '' } };
-});
+// react-globe.gl uses Three.js / WebGL which is unavailable in jsdom — mock it.
+// The wrapper div in ThreatMap carries aria-label="World threat map", so tests
+// can still find the component without the actual globe being rendered.
+vi.mock('react-globe.gl', () => ({
+  default: () => null,
+}));
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => {
