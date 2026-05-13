@@ -10,12 +10,8 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver = ResizeObserverStub;
 
-// react-globe.gl uses Three.js / WebGL which is unavailable in jsdom — mock it.
-// The wrapper div in ThreatMap carries aria-label="World threat map", so tests
-// can still find the component without the actual globe being rendered.
-vi.mock('react-globe.gl', () => ({
-  default: () => null,
-}));
+// ThreatMap uses <canvas> + requestAnimationFrame — both available in jsdom.
+// d3-geo / topojson / world-atlas are real imports; no WebGL involved, no mock needed.
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => {
