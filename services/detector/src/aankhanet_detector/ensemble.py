@@ -148,8 +148,14 @@ def score(record: dict[str, Any]) -> tuple[float, str, list[dict[str, Any]]]:
     label = "unknown_anomaly"
     if _xgb is not None:
         try:
-            pred = int(_xgb.predict(x_scaled)[0])
-            label = LABELS[pred] if pred < len(LABELS) else "unknown_anomaly"
+            if isinstance(_xgb, dict):
+                clf = _xgb["clf"]
+                class_names: list[str] = _xgb["class_names"]
+                pred = int(clf.predict(x_scaled)[0])
+                label = class_names[pred] if pred < len(class_names) else "unknown_anomaly"
+            else:
+                pred = int(_xgb.predict(x_scaled)[0])
+                label = LABELS[pred] if pred < len(LABELS) else "unknown_anomaly"
         except Exception:
             pass
 
