@@ -1,5 +1,7 @@
 import './DashboardPage.css';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { useIncidentStream } from '../hooks/use-incident-stream.ts';
 import {
@@ -161,10 +163,98 @@ function AttackBox({ label, count, variant }: AttackBoxProps) {
   );
 }
 
+// ─── GeoCard ──────────────────────────────────────────────────────────────────
+
+interface GeoInfo { ip: string; lat: number; lng: number; country: string; found: boolean }
+interface GeoCardAnchor { ip: string; incidentId: string; left: number; top: number }
+
+function flagEmoji(code: string): string {
+  if (!code || code.length !== 2) return '🌐';
+  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E0 + c.charCodeAt(0) - 65));
+}
+
+function countryName(code: string): string {
+  try { return new Intl.DisplayNames(['en'], { type: 'region' }).of(code) ?? code; }
+  catch { return code; }
+}
+
+interface GeoCardProps { anchor: GeoCardAnchor; onClose: () => void }
+
+function GeoCard({ anchor, onClose }: GeoCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: qk.geo.lookup(anchor.ip),
+    queryFn:  () => apiClient.get<GeoInfo>(`/geo/${anchor.ip}`),
+    staleTime: Infinity,
+  });
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      function handler(e: MouseEvent) {
+        if (cardRef.current && !cardRef.current.contains(e.target as Node)) onClose();
+      }
+      document.addEventListener('mousedown', handler);
+      return () => document.removeEventListener('mousedown', handler);
+    }, 0);
+    return () => clearTimeout(id);
+  }, [onClose]);
+
+  const cssVars = {
+    '--geo-top':  `${Math.min(anchor.top, window.innerHeight - 168)}px`,
+    '--geo-left': `${Math.max(8, anchor.left - 236)}px`,
+  } as React.CSSProperties;
+
+  return createPortal(
+    <div ref={cardRef} style={cssVars}
+      className="geo-card bg-navy-panel border border-navy-border rounded-xl shadow-2xl p-3.5 space-y-2.5"
+      onMouseDown={e => e.stopPropagation()}
+    >
+      {isLoading ? (
+        <div className="flex justify-center py-3"><Spinner /></div>
+      ) : !data?.found ? (
+        <div className="space-y-1">
+          <p className="text-[11px] text-slate-500">📍 Location unavailable</p>
+          <p className="text-[10px] font-mono text-slate-600">{anchor.ip}</p>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl leading-none">{flagEmoji(data.country)}</span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-100 leading-tight">
+                {countryName(data.country)}
+              </p>
+              <p className="text-[10px] font-mono text-slate-500 mt-0.5">
+                {Math.abs(data.lat).toFixed(2)}°{data.lat >= 0 ? 'N' : 'S'}&nbsp;
+                {Math.abs(data.lng).toFixed(2)}°{data.lng >= 0 ? 'E' : 'W'}
+              </p>
+            </div>
+          </div>
+          <p className="text-[10px] font-mono text-slate-500 border-t border-navy-border pt-2">
+            {data.ip}
+          </p>
+          <Link
+            to={`/incidents/${anchor.incidentId}`}
+            onClick={onClose}
+            className="flex items-center justify-center gap-1 w-full text-[11px] font-medium
+                       text-navy-accent border border-navy-border rounded-lg px-2 py-1.5
+                       hover:bg-slate-800 transition-colors"
+          >
+            View Incident →
+          </Link>
+        </>
+      )}
+    </div>,
+    document.body,
+  );
+}
+
 // ─── DashboardPage ────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   useIncidentStream();
+  const [geoCard, setGeoCard] = useState<GeoCardAnchor | null>(null);
 
   const { data: kpis, isLoading: kpisLoading } = useQuery({
     queryKey: qk.dashboard.kpis(),
@@ -297,32 +387,45 @@ export default function DashboardPage() {
               </div>
               <div className="overflow-y-auto flex-1 space-y-0 pr-0.5">
                 {(recentIncidents?.items ?? []).map((inc) => (
-                  <Link
+                  <div
                     key={inc.id}
-                    to={`/incidents/${inc.id}`}
-                    className="block py-1.5 border-b border-navy-border/40 hover:bg-slate-800/40 -mx-1 px-1 rounded transition-colors"
+                    className="py-1.5 border-b border-navy-border/40 -mx-1 px-1"
                   >
-                    {/* Source → Destination */}
+                    {/* Source IP (click for geo) → Destination */}
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${SEV_DOT[inc.severity] ?? 'bg-slate-500'}`} />
-                      <span className="font-mono text-[11px] text-slate-200 tracking-tight">
+                      <button
+                        type="button"
+                        className="font-mono text-[11px] text-slate-200 tracking-tight hover:text-navy-accent transition-colors cursor-pointer"
+                        onClick={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setGeoCard(prev =>
+                            prev?.ip === inc.sourceIp && prev.incidentId === inc.id
+                              ? null
+                              : { ip: inc.sourceIp, incidentId: inc.id, left: rect.left, top: rect.top }
+                          );
+                        }}
+                      >
                         {inc.sourceIp}
-                      </span>
+                      </button>
                       <span className="text-slate-600 text-[10px]">→</span>
                       <span className="font-mono text-[10px] text-slate-500 truncate">
                         {inc.destinationIp}
                       </span>
                     </div>
-                    {/* Attack label + time */}
+                    {/* Attack label + timestamp link */}
                     <div className="pl-3 flex items-center justify-between gap-2">
                       <span className="text-[10px] text-slate-400 truncate">
                         {inc.attackLabel.replace(/_/g, ' ')}
                       </span>
-                      <span className="text-[9px] text-slate-600 flex-shrink-0">
+                      <Link
+                        to={`/incidents/${inc.id}`}
+                        className="text-[9px] text-slate-600 hover:text-navy-accent transition-colors flex-shrink-0"
+                      >
                         {formatTs(inc.detectedAt)}
-                      </span>
+                      </Link>
                     </div>
-                  </Link>
+                  </div>
                 ))}
                 {!recentIncidents?.items.length && (
                   <p className="text-[11px] text-slate-600 pt-4 text-center">No active attacks</p>
@@ -487,6 +590,8 @@ export default function DashboardPage() {
           </tbody>
         </table>
       </div>
+
+      {geoCard && <GeoCard anchor={geoCard} onClose={() => setGeoCard(null)} />}
     </div>
   );
 }

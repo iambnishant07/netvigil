@@ -10,7 +10,7 @@ from fastapi import FastAPI
 
 from aankhanet_api import database as db
 from aankhanet_api.config import settings
-from aankhanet_api.routers import admin, alert_rules, audit_logs, auth, dashboard, devices, health, incidents, seed, users
+from aankhanet_api.routers import admin, alert_rules, audit_logs, auth, dashboard, devices, geo, health, incidents, seed, users
 
 logging.basicConfig(
     level=logging.INFO,
@@ -114,6 +114,7 @@ app.include_router(devices.router,      prefix=_PREFIX)
 app.include_router(incidents.router,    prefix=_PREFIX)
 app.include_router(alert_rules.router,  prefix=_PREFIX)
 app.include_router(dashboard.router,    prefix=_PREFIX)
+app.include_router(geo.router,          prefix=_PREFIX)
 app.include_router(seed.router,         prefix=_PREFIX)
 app.include_router(users.router,        prefix=_PREFIX)
 app.include_router(audit_logs.router,   prefix=_PREFIX)

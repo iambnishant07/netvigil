@@ -26,6 +26,9 @@ export const qk = {
   auditLogs: {
     list: (page: number) => ['audit-logs', 'list', page] as const,
   },
+  geo: {
+    lookup: (ip: string) => ['geo', ip] as const,
+  },
   orgs: {
     list: () => ['orgs', 'list'] as const,
   },
