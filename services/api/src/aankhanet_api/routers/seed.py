@@ -66,6 +66,33 @@ _RULES = [
 ]
 
 
+@router.delete("/seed", status_code=status.HTTP_200_OK)
+async def clear_seed_data(current_user: CurrentUser) -> dict:
+    """Delete all incidents, devices, and alert rules for the authenticated org."""
+    org_id = current_user["org"]
+    async with db.get_connection() as conn:
+        await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", org_id)
+        inc = await conn.fetchval(
+            "SELECT count(*) FROM incidents WHERE organization_id=$1::uuid", org_id
+        )
+        dev = await conn.fetchval(
+            "SELECT count(*) FROM devices WHERE organization_id=$1::uuid", org_id
+        )
+        alr = await conn.fetchval(
+            "SELECT count(*) FROM alert_rules WHERE organization_id=$1::uuid", org_id
+        )
+        await conn.execute(
+            "DELETE FROM incidents WHERE organization_id=$1::uuid", org_id
+        )
+        await conn.execute(
+            "DELETE FROM alert_rules WHERE organization_id=$1::uuid", org_id
+        )
+        await conn.execute(
+            "DELETE FROM devices WHERE organization_id=$1::uuid", org_id
+        )
+    return {"deleted": {"incidents": int(inc or 0), "devices": int(dev or 0), "alert_rules": int(alr or 0)}}
+
+
 @router.post("/seed", status_code=status.HTTP_200_OK)
 async def seed_demo_data(current_user: CurrentUser) -> dict:
     """Insert demo devices, incidents, and alert rules for the authenticated org."""
@@ -96,20 +123,24 @@ async def seed_demo_data(current_user: CurrentUser) -> dict:
                 device_ids.append(dev_id)
                 created["devices"] += 1
 
-        # Incidents — always insert so re-seeding adds fresh data
-        for i, (label, mitre, sev, stat, src, dst, score, narr, hrs, feats) in enumerate(_INCIDENTS):
-            dev_id = device_ids[i % len(device_ids)]
-            detected = now - timedelta(hours=hrs)
-            await conn.execute(
-                """INSERT INTO incidents
-                       (id, organization_id, device_id, detected_at, severity, status,
-                        attack_label, mitre_technique, source_ip, destination_ip,
-                        anomaly_score, narrative, top_features)
-                   VALUES ($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb)""",
-                str(uuid.uuid4()), org_id, dev_id, detected,
-                sev, stat, label, mitre, src, dst, score, narr, json.dumps(feats),
-            )
-            created["incidents"] += 1
+        # Incidents — skip if org already has seed data to keep seed idempotent
+        existing_incidents = await conn.fetchval(
+            "SELECT count(*) FROM incidents WHERE organization_id=$1::uuid", org_id
+        )
+        if not existing_incidents:
+            for i, (label, mitre, sev, stat, src, dst, score, narr, hrs, feats) in enumerate(_INCIDENTS):
+                dev_id = device_ids[i % len(device_ids)]
+                detected = now - timedelta(hours=hrs)
+                await conn.execute(
+                    """INSERT INTO incidents
+                           (id, organization_id, device_id, detected_at, severity, status,
+                            attack_label, mitre_technique, source_ip, destination_ip,
+                            anomaly_score, narrative, top_features)
+                       VALUES ($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb)""",
+                    str(uuid.uuid4()), org_id, dev_id, detected,
+                    sev, stat, label, mitre, src, dst, score, narr, json.dumps(feats),
+                )
+                created["incidents"] += 1
 
         # Alert rules — skip if name already exists
         for name, min_sev, channel in _RULES:

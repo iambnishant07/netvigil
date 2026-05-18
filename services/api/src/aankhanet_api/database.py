@@ -81,6 +81,11 @@ async def get_connection(
 ) -> AsyncGenerator[asyncpg.Connection, None]:  # type: ignore[type-arg]
     pool = await _ensure_pool()
     async with pool.acquire() as conn:
-        if org_id:
-            await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", org_id)
-        yield conn  # type: ignore[misc]
+        # Wrap in an explicit transaction so set_config(is_local=TRUE) persists
+        # for all subsequent statements on this connection.  Without this,
+        # asyncpg autocommit mode ends the implicit transaction after the
+        # set_config statement and RLS never sees app.current_org.
+        async with conn.transaction():
+            if org_id:
+                await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", org_id)
+            yield conn  # type: ignore[misc]
