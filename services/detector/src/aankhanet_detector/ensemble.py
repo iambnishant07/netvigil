@@ -84,10 +84,15 @@ def _train_defaults() -> tuple[IsolationForest, _Autoencoder, Any]:
 _iso: IsolationForest | None = None
 _ae: _Autoencoder | None = None
 _xgb: Any | None = None
+_scaler: Any | None = None   # sklearn StandardScaler — present only for CICIDS-trained models
+
+
+def _scaler_path() -> str:
+    return os.path.join(settings.model_dir, "scaler.pkl")
 
 
 def load_models() -> None:
-    global _iso, _ae, _xgb
+    global _iso, _ae, _xgb, _scaler
     os.makedirs(settings.model_dir, exist_ok=True)
 
     if os.path.exists(_if_path()) and os.path.exists(_ae_path()) and os.path.exists(_xgb_path()):
@@ -97,6 +102,10 @@ def load_models() -> None:
         _ae.load_state_dict(torch.load(_ae_path(), weights_only=True))
         with open(_xgb_path(), "rb") as f:
             _xgb = pickle.load(f)  # noqa: S301
+        if os.path.exists(_scaler_path()):
+            with open(_scaler_path(), "rb") as f:
+                _scaler = pickle.load(f)  # noqa: S301
+            log.info("Loaded StandardScaler from %s", _scaler_path())
         log.info("Loaded pre-trained models from %s", settings.model_dir)
     else:
         _iso, _ae, _xgb = _train_defaults()
@@ -118,12 +127,15 @@ def score(record: dict[str, Any]) -> tuple[float, str, list[dict[str, Any]]]:
     feat = extract(record)
     x = feat.reshape(1, -1)
 
+    # Apply StandardScaler when CICIDS-trained models are loaded
+    x_scaled = _scaler.transform(x).astype("float32") if _scaler is not None else x
+
     # Isolation Forest: score_samples returns lower = more anomalous, scale to [0,1]
-    if_score = float(-_iso.score_samples(x)[0])
+    if_score = float(-_iso.score_samples(x_scaled)[0])
     if_score = min(max((if_score + 0.5), 0.0), 1.0)
 
     # Autoencoder reconstruction error normalised to [0,1]
-    t = torch.tensor(x)
+    t = torch.tensor(x_scaled)
     with torch.no_grad():
         recon = _ae(t)
     ae_err = float(nn.MSELoss()(recon, t))
@@ -136,7 +148,7 @@ def score(record: dict[str, Any]) -> tuple[float, str, list[dict[str, Any]]]:
     label = "unknown_anomaly"
     if _xgb is not None:
         try:
-            pred = int(_xgb.predict(x)[0])
+            pred = int(_xgb.predict(x_scaled)[0])
             label = LABELS[pred] if pred < len(LABELS) else "unknown_anomaly"
         except Exception:
             pass

@@ -1,0 +1,6 @@
+# Allow model binaries — these are committed intentionally after CICIDS2017 training.
+# They are small enough for git (~6 MB total) and Railway needs them at runtime.
+!isolation_forest.pkl
+!autoencoder.pt
+!xgboost.pkl
+!scaler.pkl
