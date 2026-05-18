@@ -40,7 +40,7 @@ INCIDENT_TOPIC = "incidents.created"
 
 async def _process(
     record: dict[str, Any],
-    pool: asyncpg.Pool,  # type: ignore[type-arg]
+    pool: asyncpg.Pool,
     producer: AIOKafkaProducer,
 ) -> None:
     org_id    = record.get("org_id", "")
@@ -96,18 +96,18 @@ async def _process(
         log.info("Published incident %s to %s", incident_id, INCIDENT_TOPIC)
 
 
-async def _make_pool() -> asyncpg.Pool:  # type: ignore[return]
+async def _make_pool() -> asyncpg.Pool:
     dsn = settings.asyncpg_dsn
     if "neon.tech" in dsn or "sslmode" in dsn:
         clean = dsn.split("?")[0]
-        return await asyncpg.create_pool(clean, ssl=ssl.create_default_context(), min_size=1, max_size=10, statement_cache_size=0)  # type: ignore[return-value]
-    return await asyncpg.create_pool(dsn, min_size=1, max_size=10)  # type: ignore[return-value]
+        return await asyncpg.create_pool(clean, ssl=ssl.create_default_context(), min_size=1, max_size=10, statement_cache_size=0)
+    return await asyncpg.create_pool(dsn, min_size=1, max_size=10)
 
 
 async def main() -> None:
     ensemble.load_models()
 
-    pool: asyncpg.Pool = await _make_pool()  # type: ignore[type-arg]
+    pool: asyncpg.Pool = await _make_pool()
 
     producer = AIOKafkaProducer(
         value_serializer=lambda v: v if isinstance(v, bytes) else v,

@@ -90,4 +90,6 @@ async def _llm_narrative(
         max_tokens=300,
         messages=[{"role": "user", "content": prompt}],
     )
-    return str(message.content[0].text)[:1200]
+    block = message.content[0]
+    text = block.text if hasattr(block, "text") else ""
+    return str(text)[:1200]

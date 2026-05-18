@@ -19,7 +19,7 @@ _MIN_SCORE = 0.40
 
 
 async def write_incident(
-    pool: asyncpg.Pool,  # type: ignore[type-arg]
+    pool: asyncpg.Pool,
     org_id: str,
     device_id: str,
     record: dict[str, Any],

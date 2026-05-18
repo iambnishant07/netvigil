@@ -40,7 +40,7 @@ class _Autoencoder(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.decoder(self.encoder(x))
+        return self.decoder(self.encoder(x))  # type: ignore[no-any-return]
 
 
 # ── Model loading / training ───────────────────────────────────────────────────
@@ -71,7 +71,7 @@ def _train_defaults() -> tuple[IsolationForest, _Autoencoder, Any]:
         opt.zero_grad(); loss.backward(); opt.step()
 
     try:
-        import xgboost as xgb  # type: ignore[import-untyped]
+        import xgboost as xgb  # type: ignore[import-untyped,unused-ignore]
         y = rng.integers(0, len(LABELS), size=500)
         clf = xgb.XGBClassifier(n_estimators=50, max_depth=4, eval_metric="mlogloss", verbosity=0)
         clf.fit(X, y)
@@ -162,7 +162,7 @@ def score(record: dict[str, Any]) -> tuple[float, str, list[dict[str, Any]]]:
     # Top-3 features by contribution (absolute value)
     top_features = sorted(
         [{"name": FEATURE_NAMES[i], "value": float(feat[i])} for i in range(N_FEATURES)],
-        key=lambda d: abs(d["value"]),
+        key=lambda d: abs(float(d["value"])),  # type: ignore[arg-type]
         reverse=True,
     )[:3]
 
