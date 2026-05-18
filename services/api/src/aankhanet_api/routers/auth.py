@@ -102,6 +102,7 @@ async def register(body: RegisterRequest) -> AuthResponse:
                 conn, str(org["id"]), body.email,
                 hash_password(body.password),
                 role="admin", status="active",
+                full_name=body.full_name, phone=body.phone, dob=body.dob,
             )
         else:
             # Join existing organisation — pending admin approval
@@ -115,6 +116,7 @@ async def register(body: RegisterRequest) -> AuthResponse:
                 conn, str(org["id"]), body.email,
                 hash_password(body.password),
                 role=body.role, status="pending",
+                full_name=body.full_name, phone=body.phone, dob=body.dob,
             )
 
     return await _issue_tokens(user)

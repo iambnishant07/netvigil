@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from aankhanet_api import database as db
@@ -73,3 +73,20 @@ def require_super_admin() -> Any:
 
 
 SuperAdmin = Annotated[dict[str, Any], require_permission("system:admin")]
+
+
+async def _get_effective_org(
+    current_user: CurrentUser,
+    x_org_id: Annotated[str | None, Header(alias="X-Org-Id")] = None,
+) -> str:
+    """Effective organisation for the request.
+
+    super_admin may supply X-Org-Id to operate on any organisation.
+    All other roles are locked to their own org from the JWT.
+    """
+    if current_user.get("role") == "super_admin" and x_org_id:
+        return x_org_id
+    return current_user["org"]
+
+
+EffectiveOrg = Annotated[str, Depends(_get_effective_org)]

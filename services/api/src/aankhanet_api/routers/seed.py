@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, status
 
 from aankhanet_api import database as db
-from aankhanet_api.deps import CurrentUser
+from aankhanet_api.deps import CurrentUser, EffectiveOrg
 
 router = APIRouter(tags=["seed"])
 
@@ -67,48 +67,43 @@ _RULES = [
 
 
 @router.delete("/seed", status_code=status.HTTP_200_OK)
-async def clear_seed_data(current_user: CurrentUser) -> dict:
-    """Delete all incidents, devices, and alert rules for the authenticated org."""
-    org_id = current_user["org"]
-    async with db.get_connection() as conn:
-        await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", org_id)
+async def clear_seed_data(current_user: CurrentUser, org: EffectiveOrg) -> dict:
+    """Delete all incidents, devices, and alert rules for the effective org."""
+    async with db.get_connection(org) as conn:
         inc = await conn.fetchval(
-            "SELECT count(*) FROM incidents WHERE organization_id=$1::uuid", org_id
+            "SELECT count(*) FROM incidents WHERE organization_id=$1::uuid", org
         )
         dev = await conn.fetchval(
-            "SELECT count(*) FROM devices WHERE organization_id=$1::uuid", org_id
+            "SELECT count(*) FROM devices WHERE organization_id=$1::uuid", org
         )
         alr = await conn.fetchval(
-            "SELECT count(*) FROM alert_rules WHERE organization_id=$1::uuid", org_id
+            "SELECT count(*) FROM alert_rules WHERE organization_id=$1::uuid", org
         )
         await conn.execute(
-            "DELETE FROM incidents WHERE organization_id=$1::uuid", org_id
+            "DELETE FROM incidents WHERE organization_id=$1::uuid", org
         )
         await conn.execute(
-            "DELETE FROM alert_rules WHERE organization_id=$1::uuid", org_id
+            "DELETE FROM alert_rules WHERE organization_id=$1::uuid", org
         )
         await conn.execute(
-            "DELETE FROM devices WHERE organization_id=$1::uuid", org_id
+            "DELETE FROM devices WHERE organization_id=$1::uuid", org
         )
     return {"deleted": {"incidents": int(inc or 0), "devices": int(dev or 0), "alert_rules": int(alr or 0)}}
 
 
 @router.post("/seed", status_code=status.HTTP_200_OK)
-async def seed_demo_data(current_user: CurrentUser) -> dict:
-    """Insert demo devices, incidents, and alert rules for the authenticated org."""
-    org_id = current_user["org"]
+async def seed_demo_data(current_user: CurrentUser, org: EffectiveOrg) -> dict:
+    """Insert demo devices, incidents, and alert rules for the effective org."""
     now = datetime.now(timezone.utc)
     created: dict[str, int] = {"devices": 0, "incidents": 0, "alert_rules": 0}
 
-    async with db.get_connection() as conn:
-        await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", org_id)
-
+    async with db.get_connection(org) as conn:
         # Devices — skip if already present by name
         device_ids: list[str] = []
         for name, vendor, protocol, ip in _DEVICES:
             row = await conn.fetchrow(
                 "SELECT id FROM devices WHERE name=$1 AND organization_id=$2::uuid",
-                name, org_id,
+                name, org,
             )
             if row:
                 device_ids.append(str(row["id"]))
@@ -118,14 +113,14 @@ async def seed_demo_data(current_user: CurrentUser) -> dict:
                     """INSERT INTO devices
                            (id, organization_id, name, vendor, protocol, public_ip, shared_secret_hash)
                        VALUES ($1::uuid,$2::uuid,$3,$4,$5,$6::inet,'seed-placeholder')""",
-                    dev_id, org_id, name, vendor, protocol, ip,
+                    dev_id, org, name, vendor, protocol, ip,
                 )
                 device_ids.append(dev_id)
                 created["devices"] += 1
 
         # Incidents — skip if org already has seed data to keep seed idempotent
         existing_incidents = await conn.fetchval(
-            "SELECT count(*) FROM incidents WHERE organization_id=$1::uuid", org_id
+            "SELECT count(*) FROM incidents WHERE organization_id=$1::uuid", org
         )
         if not existing_incidents:
             for i, (label, mitre, sev, stat, src, dst, score, narr, hrs, feats) in enumerate(_INCIDENTS):
@@ -137,7 +132,7 @@ async def seed_demo_data(current_user: CurrentUser) -> dict:
                             attack_label, mitre_technique, source_ip, destination_ip,
                             anomaly_score, narrative, top_features)
                        VALUES ($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb)""",
-                    str(uuid.uuid4()), org_id, dev_id, detected,
+                    str(uuid.uuid4()), org, dev_id, detected,
                     sev, stat, label, mitre, src, dst, score, narr, json.dumps(feats),
                 )
                 created["incidents"] += 1
@@ -146,13 +141,13 @@ async def seed_demo_data(current_user: CurrentUser) -> dict:
         for name, min_sev, channel in _RULES:
             exists = await conn.fetchrow(
                 "SELECT id FROM alert_rules WHERE name=$1 AND organization_id=$2::uuid",
-                name, org_id,
+                name, org,
             )
             if not exists:
                 await conn.execute(
                     """INSERT INTO alert_rules (id, organization_id, name, min_severity, channel, enabled)
                        VALUES ($1::uuid,$2::uuid,$3,$4,$5,TRUE)""",
-                    str(uuid.uuid4()), org_id, name, min_sev, channel,
+                    str(uuid.uuid4()), org, name, min_sev, channel,
                 )
                 created["alert_rules"] += 1
 

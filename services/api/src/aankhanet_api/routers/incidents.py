@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconn
 
 from aankhanet_api import database as db
 from aankhanet_api.config import settings
-from aankhanet_api.deps import require_permission
+from aankhanet_api.deps import EffectiveOrg, require_permission
 from aankhanet_api.permissions import ROLE_PERMISSIONS
 from aankhanet_api.repositories import incidents as inc_repo
 from aankhanet_api.schemas.incidents import IncidentCreate, IncidentList, IncidentOut, IncidentPatch
@@ -27,7 +27,7 @@ _WriteIncident = Annotated[dict[str, Any], require_permission("incidents:write")
     status_code=status.HTTP_201_CREATED,
 )
 async def create_incident(
-    body: IncidentCreate, current_user: _WriteIncident,
+    body: IncidentCreate, current_user: _WriteIncident, org: EffectiveOrg,
 ) -> IncidentOut:
     valid_severities = {"info", "low", "medium", "high", "critical"}
     if body.severity not in valid_severities:
@@ -42,7 +42,7 @@ async def create_incident(
 
     async with db.get_connection() as conn:
         incident = await inc_repo.create_incident(
-            conn, current_user["org"],
+            conn, org,
             device_id=body.device_id,
             severity=body.severity,
             attack_label=body.attack_label,
@@ -64,6 +64,7 @@ async def create_incident(
 @router.get("", response_model=IncidentList, response_model_by_alias=True)
 async def list_incidents(
     current_user: _ReadIncident,
+    org: EffectiveOrg,
     severity: str | None = Query(default=None),
     status_filter: str | None = Query(default=None, alias="status"),
     device_id: str | None = Query(default=None),
@@ -74,7 +75,7 @@ async def list_incidents(
 ) -> IncidentList:
     async with db.get_connection() as conn:
         items, total = await inc_repo.list_incidents(
-            conn, current_user["org"], severity, status_filter,
+            conn, org, severity, status_filter,
             device_id, from_dt, to_dt, page, page_size,
         )
     return IncidentList(
@@ -105,9 +106,9 @@ async def incident_stream(websocket: WebSocket) -> None:
 
 
 @router.get("/{incident_id}", response_model=IncidentOut, response_model_by_alias=True)
-async def get_incident(incident_id: str, current_user: _ReadIncident) -> IncidentOut:
+async def get_incident(incident_id: str, current_user: _ReadIncident, org: EffectiveOrg) -> IncidentOut:
     async with db.get_connection() as conn:
-        incident = await inc_repo.get_incident(conn, current_user["org"], incident_id)
+        incident = await inc_repo.get_incident(conn, org, incident_id)
     if not incident:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
     return IncidentOut(**incident)
@@ -115,7 +116,7 @@ async def get_incident(incident_id: str, current_user: _ReadIncident) -> Inciden
 
 @router.patch("/{incident_id}", response_model=IncidentOut, response_model_by_alias=True)
 async def patch_incident(
-    incident_id: str, body: IncidentPatch, current_user: _AckIncident,
+    incident_id: str, body: IncidentPatch, current_user: _AckIncident, org: EffectiveOrg,
 ) -> IncidentOut:
     valid_statuses   = {"open", "acknowledged", "confirmed", "false_positive"}
     valid_severities = {"info", "low", "medium", "high", "critical"}
@@ -124,7 +125,6 @@ async def patch_incident(
     if body.severity is not None and body.severity not in valid_severities:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid severity")
 
-    # Severity or narrative changes require a higher permission level
     if (body.severity is not None or body.narrative is not None) and \
             "incidents:write" not in ROLE_PERMISSIONS.get(current_user["role"], frozenset()):
         raise HTTPException(
@@ -134,7 +134,7 @@ async def patch_incident(
 
     async with db.get_connection() as conn:
         incident = await inc_repo.patch_incident(
-            conn, current_user["org"], incident_id,
+            conn, org, incident_id,
             status=body.status, severity=body.severity, narrative=body.narrative,
         )
     if not incident:

@@ -73,11 +73,14 @@ async def patch_alert_rule(
             params.append(kwargs[field])
             idx += 1
     if not sets:
-        row = await conn.fetchrow("SELECT * FROM alert_rules WHERE id = $1", rule_id)
+        row = await conn.fetchrow(
+            "SELECT * FROM alert_rules WHERE id = $1 AND organization_id = $2::uuid",
+            rule_id, org_id,
+        )
         return _row_to_dict(row) if row else None  # type: ignore[arg-type]
-    params.append(rule_id)
+    params.extend([rule_id, org_id])
     row = await conn.fetchrow(
-        f"UPDATE alert_rules SET {', '.join(sets)} WHERE id = ${idx} RETURNING *",
+        f"UPDATE alert_rules SET {', '.join(sets)} WHERE id = ${idx}::uuid AND organization_id = ${idx+1}::uuid RETURNING *",
         *params,
     )
     return _row_to_dict(row) if row else None  # type: ignore[arg-type]
@@ -89,5 +92,8 @@ async def delete_alert_rule(
     rule_id: str,
 ) -> bool:
     await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", org_id)
-    result = await conn.execute("DELETE FROM alert_rules WHERE id = $1", rule_id)
+    result = await conn.execute(
+        "DELETE FROM alert_rules WHERE id = $1 AND organization_id = $2::uuid",
+        rule_id, org_id,
+    )
     return result == "DELETE 1"

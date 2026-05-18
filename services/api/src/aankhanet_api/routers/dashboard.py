@@ -6,7 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Query
 
 from aankhanet_api import database as db
-from aankhanet_api.deps import require_permission
+from aankhanet_api.deps import EffectiveOrg, require_permission
 from aankhanet_api.geo import batch_lookup, country_for_sync, is_private
 from aankhanet_api.repositories import incidents as inc_repo
 from aankhanet_api.schemas.dashboard import (
@@ -30,11 +30,9 @@ _ReadDashboard = Annotated[dict[str, Any], require_permission("dashboard:read")]
 # ─── /kpis ───────────────────────────────────────────────────────────────────
 
 @router.get("/kpis", response_model=DashboardKpis, response_model_by_alias=True)
-async def get_kpis(current_user: _ReadDashboard) -> DashboardKpis:
-    async with db.get_connection() as conn:
-        await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", current_user["org"])
-
-        sev_counts = await inc_repo.get_kpis(conn, current_user["org"])
+async def get_kpis(current_user: _ReadDashboard, org: EffectiveOrg) -> DashboardKpis:
+    async with db.get_connection(org) as conn:
+        sev_counts = await inc_repo.get_kpis(conn, org)
 
         # Top internal talkers — internal source IPs by incident count.
         # anomaly_score × 500 MB used as a traffic-volume proxy (no netflow table).
@@ -61,7 +59,7 @@ async def get_kpis(current_user: _ReadDashboard) -> DashboardKpis:
             ORDER BY cnt DESC, est_bytes DESC
             LIMIT 8
             """,
-            current_user["org"],
+            org,
         )
 
         # Top external destinations — non-RFC-1918 destination IPs.
@@ -94,7 +92,7 @@ async def get_kpis(current_user: _ReadDashboard) -> DashboardKpis:
             ORDER BY cnt DESC, est_bytes DESC
             LIMIT 9
             """,
-            current_user["org"],
+            org,
         )
 
     # Geolocate all external destination IPs concurrently for country codes
@@ -126,10 +124,10 @@ async def get_kpis(current_user: _ReadDashboard) -> DashboardKpis:
 @router.get("/threat-map", response_model=ThreatMap, response_model_by_alias=True)
 async def get_threat_map(
     current_user: _ReadDashboard,
+    org: EffectiveOrg,
     hours: int = Query(default=24, ge=1, le=168),
 ) -> ThreatMap:
-    async with db.get_connection() as conn:
-        await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", current_user["org"])
+    async with db.get_connection(org) as conn:
         rows = await conn.fetch(
             """
             SELECT i.source_ip, i.severity,
@@ -202,9 +200,8 @@ async def get_threat_map(
 # ─── /trend ───────────────────────────────────────────────────────────────────
 
 @router.get("/trend", response_model=TrendData, response_model_by_alias=True)
-async def get_trend(current_user: _ReadDashboard) -> TrendData:
-    async with db.get_connection() as conn:
-        await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", current_user["org"])
+async def get_trend(current_user: _ReadDashboard, org: EffectiveOrg) -> TrendData:
+    async with db.get_connection(org) as conn:
         rows = await conn.fetch(
             """
             SELECT
@@ -217,7 +214,7 @@ async def get_trend(current_user: _ReadDashboard) -> TrendData:
             GROUP BY 1, 2
             ORDER BY 1
             """,
-            current_user["org"],
+            org,
         )
 
     pivot: dict[str, dict[str, int]] = {}
@@ -275,9 +272,8 @@ def _classify_attack(label: str) -> str:
 
 
 @router.get("/attack-types", response_model=AttackTypes, response_model_by_alias=True)
-async def get_attack_types(current_user: _ReadDashboard) -> AttackTypes:
-    async with db.get_connection() as conn:
-        await conn.execute("SELECT set_config('app.current_org', $1, TRUE)", current_user["org"])
+async def get_attack_types(current_user: _ReadDashboard, org: EffectiveOrg) -> AttackTypes:
+    async with db.get_connection(org) as conn:
         rows = await conn.fetch(
             """
             SELECT attack_label, count(*)::int AS cnt
@@ -285,7 +281,7 @@ async def get_attack_types(current_user: _ReadDashboard) -> AttackTypes:
             WHERE organization_id = $1::uuid
             GROUP BY attack_label
             """,
-            current_user["org"],
+            org,
         )
 
     counts: dict[str, int] = {

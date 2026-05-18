@@ -46,12 +46,17 @@ async def create_user(
     password_hash: str,
     role: str = "admin",
     status: str = "active",
+    full_name: str | None = None,
+    phone: str | None = None,
+    dob: str | None = None,
 ) -> dict:  # type: ignore[type-arg]
     user_id = str(uuid7())
     row = await conn.fetchrow(
-        """INSERT INTO users(id, organization_id, email, password_hash, role, status)
-           VALUES($1,$2,$3,$4,$5,$6) RETURNING *""",
+        """INSERT INTO users(id, organization_id, email, password_hash, role, status,
+                             full_name, phone, dob)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::date) RETURNING *""",
         user_id, org_id, email, password_hash, role, status,
+        full_name, phone, dob,
     )
     return dict(row)  # type: ignore[arg-type]
 

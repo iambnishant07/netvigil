@@ -20,6 +20,9 @@ class RegisterRequest(CamelModel):
     password: str
     role: str = "analyst"
     timezone: str = "Australia/Brisbane"
+    full_name: str | None = None
+    phone: str | None = None
+    dob: str | None = None
 
     @model_validator(mode="after")
     def org_xor(self) -> RegisterRequest:
