@@ -1,6 +1,14 @@
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/auth-context.tsx';
 import { usePermission } from '../../lib/permissions.ts';
+import { apiClient } from '../../lib/api-client.ts';
+import { qk } from '../../lib/query-keys.ts';
+
+interface OrgOption {
+  id: string;
+  name: string;
+}
 
 interface NavItem {
   to: string;
@@ -99,8 +107,15 @@ function NavItemLink({ item }: { item: NavItem }) {
 }
 
 export default function AppShell() {
-  const { user, logout } = useAuth();
+  const { user, logout, selectedOrgId, setSelectedOrgId } = useAuth();
   const navigate = useNavigate();
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  const { data: orgs } = useQuery<OrgOption[]>({
+    queryKey: qk.orgs.list(),
+    queryFn: () => apiClient.get<OrgOption[]>('/auth/organizations'),
+    enabled: isSuperAdmin,
+  });
 
   function handleLogout() {
     logout();
@@ -168,7 +183,25 @@ export default function AppShell() {
             <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-xs text-slate-400">Live monitoring</span>
           </div>
-          <span className="text-xs text-slate-500 capitalize">{user?.role?.replace(/_/g, ' ')}</span>
+          <div className="flex items-center gap-4">
+            {isSuperAdmin && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">Org:</span>
+                <select
+                  aria-label="Select organisation"
+                  value={selectedOrgId ?? ''}
+                  onChange={(e) => setSelectedOrgId(e.target.value || null)}
+                  className="rounded bg-slate-700 border border-slate-600 px-2 py-1 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="">All (my org)</option>
+                  {(orgs ?? []).map((o) => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <span className="text-xs text-slate-500 capitalize">{user?.role?.replace(/_/g, ' ')}</span>
+          </div>
         </header>
 
         {/* Page content */}

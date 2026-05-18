@@ -34,13 +34,19 @@ const ROLES = [
   { value: 'developer',             label: 'Developer'             },
 ];
 
+const profileSchema = z.object({
+  fullName: z.string().optional(),
+  phone:    z.string().optional(),
+  dob:      z.string().optional(),
+});
+
 const createSchema = z.object({
   mode:             z.literal('create'),
   organizationName: z.string().min(2, 'Organisation name must be at least 2 characters'),
   email:            z.string().email('Enter a valid email address'),
   password:         z.string().min(12, 'Password must be at least 12 characters'),
   timezone:         z.string().min(1, 'Select a timezone'),
-});
+}).merge(profileSchema);
 
 const joinSchema = z.object({
   mode:           z.literal('join'),
@@ -48,7 +54,7 @@ const joinSchema = z.object({
   email:          z.string().email('Enter a valid email address'),
   password:       z.string().min(12, 'Password must be at least 12 characters'),
   role:           z.string().min(1, 'Select a role'),
-});
+}).merge(profileSchema);
 
 type Mode = 'create' | 'join';
 type FormErrors = Record<string, string>;
@@ -66,6 +72,9 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [timezone, setTimezone] = useState('Australia/Sydney');
   const [role,     setRole]     = useState('analyst');
+  const [fullName, setFullName] = useState('');
+  const [phone,    setPhone]    = useState('');
+  const [dob,      setDob]      = useState('');
   const [errors,   setErrors]   = useState<FormErrors>({});
 
   const { login } = useAuth();
@@ -89,10 +98,18 @@ export default function RegisterPage() {
     },
   });
 
+  function buildProfileFields(): Record<string, string> {
+    const fields: Record<string, string> = {};
+    if (fullName.trim()) fields.fullName = fullName.trim();
+    if (phone.trim())    fields.phone    = phone.trim();
+    if (dob)             fields.dob      = dob;
+    return fields;
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (mode === 'create') {
-      const result = createSchema.safeParse({ mode, organizationName: orgName, email, password, timezone });
+      const result = createSchema.safeParse({ mode, organizationName: orgName, email, password, timezone, fullName, phone, dob });
       if (!result.success) {
         const fe: FormErrors = {};
         for (const issue of result.error.issues) fe[String(issue.path[0])] = issue.message;
@@ -100,9 +117,9 @@ export default function RegisterPage() {
         return;
       }
       setErrors({});
-      mutation.mutate({ organizationName: orgName, email, password, timezone });
+      mutation.mutate({ organizationName: orgName, email, password, timezone, ...buildProfileFields() });
     } else {
-      const result = joinSchema.safeParse({ mode, organizationId: orgId, email, password, role });
+      const result = joinSchema.safeParse({ mode, organizationId: orgId, email, password, role, fullName, phone, dob });
       if (!result.success) {
         const fe: FormErrors = {};
         for (const issue of result.error.issues) fe[String(issue.path[0])] = issue.message;
@@ -110,7 +127,7 @@ export default function RegisterPage() {
         return;
       }
       setErrors({});
-      mutation.mutate({ organizationId: orgId, email, password, role });
+      mutation.mutate({ organizationId: orgId, email, password, role, ...buildProfileFields() });
     }
   }
 
@@ -118,7 +135,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-900 bg-[url('/logo-bg.png')] bg-cover bg-center bg-no-repeat px-4 py-12">
-      <div className="w-full max-w-sm space-y-6">
+      <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-slate-100">Create an account</h1>
           <p className="mt-1 text-sm text-slate-400">Get started with AankhaNet</p>
@@ -152,6 +169,7 @@ export default function RegisterPage() {
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            {/* Organisation fields */}
             {mode === 'create' ? (
               <>
                 <Input
@@ -192,6 +210,7 @@ export default function RegisterPage() {
               </>
             )}
 
+            {/* Account credentials */}
             <Input
               label="Email"
               type="email"
@@ -210,6 +229,41 @@ export default function RegisterPage() {
               error={errors.password}
               placeholder="At least 12 characters"
             />
+
+            {/* Profile details */}
+            <div className="border-t border-slate-700 pt-4">
+              <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
+                Profile details <span className="normal-case font-normal">(optional)</span>
+              </p>
+              <div className="space-y-4">
+                <Input
+                  label="Full name"
+                  type="text"
+                  autoComplete="name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  error={errors.fullName}
+                  placeholder="Jane Smith"
+                />
+                <Input
+                  label="Phone number"
+                  type="tel"
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  error={errors.phone}
+                  placeholder="+61 400 000 000"
+                />
+                <Input
+                  label="Date of birth"
+                  type="date"
+                  autoComplete="bday"
+                  value={dob}
+                  onChange={(e) => setDob(e.target.value)}
+                  error={errors.dob}
+                />
+              </div>
+            </div>
 
             {mutation.isError && (
               <ErrorAlert message={(mutation.error as Error).message} />

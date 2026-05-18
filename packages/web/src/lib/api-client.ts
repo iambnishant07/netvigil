@@ -1,5 +1,15 @@
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1';
 
+let _orgOverride: string | null = null;
+
+export function setOrgOverride(id: string | null): void {
+  _orgOverride = id;
+}
+
+export function getOrgOverride(): string | null {
+  return _orgOverride;
+}
+
 function getToken(): string | null {
   return localStorage.getItem('nv_access_token');
 }
@@ -38,6 +48,7 @@ async function request<T>(path: string, init?: RequestInit, isRetry = false): Pr
   const tok = getToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (tok !== null) headers['Authorization'] = `Bearer ${tok}`;
+  if (_orgOverride !== null) headers['X-Org-Id'] = _orgOverride;
 
   let res: Response;
   try {
