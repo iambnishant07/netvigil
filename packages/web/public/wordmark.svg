@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 200" role="img" aria-label="AankhaNet">
+  
+  <g transform="translate(0, 0)" fill="none" stroke="#818cf8" stroke-width="9" stroke-linejoin="round">
+    <path d="M14 100 Q100 22 186 100 Q100 178 14 100 Z"></path>
+    <circle cx="100" cy="100" r="36"></circle>
+    <circle cx="100" cy="100" r="12" fill="#818cf8"></circle>
+    <path d="M30 70 Q100 36 170 70" stroke-width="2" opacity="0.35"></path>
+    <path d="M30 130 Q100 164 170 130" stroke-width="2" opacity="0.35"></path>
+  </g>
+  
+  <text x="230" y="130" font-family="ui-sans-serif, system-ui, -apple-system, &#39;Segoe UI&#39;, &#39;Inter&#39;, Roboto, sans-serif" font-weight="700" font-size="96" letter-spacing="-2.4">
+    <tspan fill="#f1f5f9">Aankha</tspan><tspan fill="#818cf8">Net</tspan>
+  </text>
+</svg>

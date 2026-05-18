@@ -112,9 +112,17 @@ export default function AppShell() {
       {/* Sidebar */}
       <aside className="flex w-60 flex-shrink-0 flex-col bg-slate-800 border-r border-slate-700">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 px-4 py-4 border-b border-slate-700">
-          <img src="/favicon.png" alt="AankhaNet" className="h-8 w-8 object-contain" />
-          <span className="text-base font-bold text-slate-100 tracking-tight">AankhaNet</span>
+        <div className="flex items-center gap-2.5 px-4 py-[14px] border-b border-slate-700">
+          <svg className="h-8 w-8 flex-shrink-0" viewBox="0 0 200 200" fill="none" stroke="#818cf8" strokeWidth={9} strokeLinejoin="round" aria-hidden="true">
+            <path d="M14 100 Q100 22 186 100 Q100 178 14 100 Z" />
+            <circle cx="100" cy="100" r="36" />
+            <circle cx="100" cy="100" r="12" fill="#818cf8" stroke="none" />
+            <path d="M30 70 Q100 36 170 70" strokeWidth={2} opacity={0.35} />
+            <path d="M30 130 Q100 164 170 130" strokeWidth={2} opacity={0.35} />
+          </svg>
+          <span className="text-base font-bold tracking-tight leading-none select-none">
+            <span className="text-slate-100">Aankha</span><span className="text-indigo-400">Net</span>
+          </span>
         </div>
 
         {/* Nav */}

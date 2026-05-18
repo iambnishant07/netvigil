@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AankhaNet">
+  
+  <rect width="64" height="64" rx="14" fill="#0f172a"></rect>
+  
+  <g transform="translate(7, 7) scale(0.25)" fill="none" stroke="#818cf8" stroke-width="36" stroke-linejoin="round">
+    <path d="M14 100 Q100 22 186 100 Q100 178 14 100 Z"></path>
+    <circle cx="100" cy="100" r="36"></circle>
+    <circle cx="100" cy="100" r="12" fill="#818cf8" stroke="none"></circle>
+  </g>
+</svg>
