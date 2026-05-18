@@ -10,9 +10,8 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver = ResizeObserverStub;
 
-// ThreatMap uses <canvas> + requestAnimationFrame — both available in jsdom.
-// jsdom doesn't implement getContext; suppress the noise (animation loop handles null ctx gracefully).
-HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(null) as typeof HTMLCanvasElement.prototype.getContext;
+// ThreatMap now uses Mapbox GL JS (mocked per-test in DashboardPage.test.tsx).
+// No global canvas mock needed.
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => {

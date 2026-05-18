@@ -1,13 +1,7 @@
-import { feature } from 'topojson-client';
-import {
-  geoNaturalEarth1,
-  geoPath,
-  geoGraticule,
-  geoInterpolate,
-  type GeoPermissibleObjects,
-} from 'd3-geo';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { geoInterpolate } from 'd3-geo';
 import { useEffect, useRef } from 'react';
-import worldTopo from 'world-atlas/countries-110m.json';
 
 // ─── public types ─────────────────────────────────────────────────────────────
 
@@ -31,217 +25,329 @@ interface Props {
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
-const SEV_COLOR: Record<string, [number, number, number]> = {
-  critical: [239,  68,  68],   // red-500
-  high:     [249, 115,  22],   // orange-500
-  medium:   [234, 179,   8],   // yellow-500
-  low:      [ 34, 197,  94],   // green-500
+const TOKEN = import.meta.env['VITE_MAPBOX_TOKEN'] as string | undefined;
+
+const SEV_HEX: Record<string, string> = {
+  critical: '#ef4444',
+  high:     '#f97316',
+  medium:   '#eab308',
+  low:      '#22c55e',
 };
-const DEFAULT_RGB: [number, number, number] = [148, 163, 184]; // slate-400
+const DEFAULT_HEX = '#94a3b8';
 
 const HOME: [number, number] = [151.21, -33.87]; // Sydney [lng, lat]
+const STEPS = 80; // arc interpolation resolution
 
-// Pre-parse world land geometry once (module-level, not per render)
-// world-atlas always exports 'land'; non-null assertion is safe here
-const LAND = feature(worldTopo, worldTopo.objects['land']!) as GeoPermissibleObjects;
-const GRATICULE = geoGraticule()() as GeoPermissibleObjects;
-
-// ─── internal animation types ─────────────────────────────────────────────────
+// ─── internal types ───────────────────────────────────────────────────────────
 
 interface Particle { t: number; speed: number }
 
 interface AnimArc {
-  // d3 great-circle interpolator: t ∈ [0,1] → [lng, lat]
-  interp: (t: number) => [number, number];
-  rgb: [number, number, number];
+  interp:    (t: number) => [number, number];
+  color:     string;
   particles: Particle[];
+  originLng: number;
+  originLat: number;
 }
+
+type GeoFeature     = GeoJSON.Feature;
+type GeoFC          = GeoJSON.FeatureCollection;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-function buildAnimArcs(arcs: ThreatArc[]): AnimArc[] {
-  return arcs.map((a) => {
+function sevColor(severity: string): string {
+  return SEV_HEX[severity] ?? DEFAULT_HEX;
+}
+
+function buildAnimArcs(raw: ThreatArc[]): AnimArc[] {
+  return raw.map((a) => {
     const from: [number, number] = [a.from.lng, a.from.lat];
     const to:   [number, number] = [a.to.lng,   a.to.lat];
-    const rgb = SEV_COLOR[a.severity] ?? DEFAULT_RGB;
-    const interp = geoInterpolate(from, to);
-    // 3 staggered particles per arc
-    const particles: Particle[] = [
-      { t: 0.00, speed: 0.0035 + Math.random() * 0.003 },
-      { t: 0.33, speed: 0.0035 + Math.random() * 0.003 },
-      { t: 0.66, speed: 0.0035 + Math.random() * 0.003 },
-    ];
-    return { interp, rgb, particles };
+    return {
+      interp:    geoInterpolate(from, to),
+      color:     sevColor(a.severity),
+      originLng: a.from.lng,
+      originLat: a.from.lat,
+      particles: [
+        { t: 0.00, speed: 0.004 + Math.random() * 0.003 },
+        { t: 0.33, speed: 0.004 + Math.random() * 0.003 },
+        { t: 0.66, speed: 0.004 + Math.random() * 0.003 },
+      ],
+    };
   });
+}
+
+function fc(features: GeoFeature[]): GeoFC {
+  return { type: 'FeatureCollection', features };
+}
+
+// GeoJSON FeatureCollection of great-circle LineStrings (one per arc)
+function arcFC(arcs: AnimArc[], raw: ThreatArc[]): GeoFC {
+  return fc(
+    arcs.map((a, i) => ({
+      type: 'Feature' as const,
+      properties: { color: a.color, severity: raw[i]?.severity ?? 'info' },
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: Array.from({ length: STEPS + 1 }, (_, k) =>
+          a.interp(k / STEPS) as [number, number]
+        ),
+      },
+    }))
+  );
+}
+
+// GeoJSON FeatureCollection of current particle positions
+function particleFC(arcs: AnimArc[]): GeoFC {
+  return fc(
+    arcs.flatMap((a) =>
+      a.particles.map((p): GeoFeature => {
+        const [lng, lat] = a.interp(p.t);
+        return {
+          type: 'Feature' as const,
+          properties: { color: a.color },
+          geometry: { type: 'Point' as const, coordinates: [lng, lat] },
+        };
+      })
+    )
+  );
+}
+
+// Unique origin points (deduplicated by coordinate)
+function originFC(arcs: AnimArc[]): GeoFC {
+  const seen = new Set<string>();
+  return fc(
+    arcs
+      .filter((a) => {
+        const key = `${a.originLng},${a.originLat}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((a): GeoFeature => ({
+        type: 'Feature' as const,
+        properties: { color: a.color },
+        geometry: { type: 'Point' as const, coordinates: [a.originLng, a.originLat] },
+      }))
+  );
+}
+
+// ─── map layer setup (called once on 'load') ──────────────────────────────────
+
+function setupLayers(map: mapboxgl.Map): void {
+  const empty = fc([]);
+
+  map.addSource('threat-arcs',      { type: 'geojson', data: empty });
+  map.addSource('threat-particles', { type: 'geojson', data: empty });
+  map.addSource('threat-origins',   { type: 'geojson', data: empty });
+  map.addSource('threat-home', {
+    type: 'geojson',
+    data: {
+      type: 'Feature' as const,
+      properties: {},
+      geometry: { type: 'Point' as const, coordinates: HOME },
+    },
+  });
+
+  // Faint great-circle arc trails
+  map.addLayer({
+    id: 'arc-lines', type: 'line', source: 'threat-arcs',
+    paint: {
+      'line-color':   ['get', 'color'],
+      'line-opacity': 0.28,
+      'line-width':   1,
+    },
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+  });
+
+  // Animated particle dots
+  map.addLayer({
+    id: 'particles', type: 'circle', source: 'threat-particles',
+    paint: {
+      'circle-radius':  3,
+      'circle-color':   ['get', 'color'],
+      'circle-blur':    0.25,
+      'circle-opacity': 0.92,
+    },
+  });
+
+  // Origin pulse ring (radius animated each frame via setPaintProperty)
+  map.addLayer({
+    id: 'origin-pulse', type: 'circle', source: 'threat-origins',
+    paint: {
+      'circle-radius':         6,
+      'circle-color':          'transparent',
+      'circle-stroke-width':   1.5,
+      'circle-stroke-color':   ['get', 'color'],
+      'circle-stroke-opacity': 0.6,
+    },
+  });
+
+  // Origin core dot
+  map.addLayer({
+    id: 'origin-core', type: 'circle', source: 'threat-origins',
+    paint: {
+      'circle-radius': 2.5,
+      'circle-color':  ['get', 'color'],
+    },
+  });
+
+  // Sydney — outer pulse ring 1
+  map.addLayer({
+    id: 'home-pulse-1', type: 'circle', source: 'threat-home',
+    paint: {
+      'circle-radius':         8,
+      'circle-color':          'transparent',
+      'circle-stroke-width':   1.5,
+      'circle-stroke-color':   '#00c8e0',
+      'circle-stroke-opacity': 0.5,
+    },
+  });
+
+  // Sydney — outer pulse ring 2 (counter-phase)
+  map.addLayer({
+    id: 'home-pulse-2', type: 'circle', source: 'threat-home',
+    paint: {
+      'circle-radius':         8,
+      'circle-color':          'transparent',
+      'circle-stroke-width':   1.5,
+      'circle-stroke-color':   '#00c8e0',
+      'circle-stroke-opacity': 0.5,
+    },
+  });
+
+  // Sydney — static inner ring
+  map.addLayer({
+    id: 'home-ring', type: 'circle', source: 'threat-home',
+    paint: {
+      'circle-radius':         5,
+      'circle-color':          'transparent',
+      'circle-stroke-width':   1.2,
+      'circle-stroke-color':   '#00c8e0',
+      'circle-stroke-opacity': 0.85,
+    },
+  });
+
+  // Sydney — core dot with icon-size scaling (new Mapbox capability)
+  map.addLayer({
+    id: 'home-core', type: 'circle', source: 'threat-home',
+    paint: {
+      'circle-radius':  3.5,
+      'circle-color':   '#00c8e0',
+      'circle-opacity': 1,
+    },
+  });
+}
+
+function setData(map: mapboxgl.Map, id: string, data: GeoFC): void {
+  (map.getSource(id) as mapboxgl.GeoJSONSource).setData(data);
 }
 
 // ─── component ────────────────────────────────────────────────────────────────
 
 export function ThreatMap({ threatMap, className = 'h-80' }: Props) {
-  const canvasRef  = useRef<HTMLCanvasElement>(null);
-  const rafRef     = useRef<number | null>(null);
-  const arcsRef    = useRef<AnimArc[]>([]);
-  const frameRef   = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef       = useRef<mapboxgl.Map | null>(null);
+  const rafRef       = useRef<number | null>(null);
+  const frameRef     = useRef(0);
+  const arcsRef      = useRef<AnimArc[]>([]);
+  const rawArcsRef   = useRef<ThreatArc[]>([]);
+  const loadedRef    = useRef(false);
 
-  // Rebuild animation arcs when data changes
+  // Keep animation arc state in sync with incoming prop
   useEffect(() => {
-    arcsRef.current = buildAnimArcs(threatMap?.arcs ?? []);
+    rawArcsRef.current = threatMap?.arcs ?? [];
+    arcsRef.current    = buildAnimArcs(rawArcsRef.current);
+    if (loadedRef.current && mapRef.current) {
+      const m = mapRef.current;
+      setData(m, 'threat-arcs',    arcFC(arcsRef.current, rawArcsRef.current));
+      setData(m, 'threat-origins', originFC(arcsRef.current));
+    }
   }, [threatMap]);
 
-  // Resize canvas to fill its container
+  // Map lifecycle — mount once, read everything from refs
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ro = new ResizeObserver(() => {
-      canvas.width  = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
+    if (!TOKEN || !containerRef.current) return;
+
+    mapboxgl.accessToken = TOKEN;
+
+    const map = new mapboxgl.Map({
+      container:        containerRef.current,
+      style:            'mapbox://styles/mapbox/dark-v11',
+      projection:       'equalEarth',
+      center:           [20, 10],
+      zoom:             0.9,
+      interactive:      true,
+      scrollZoom:       false,   // don't hijack page scroll
+      dragRotate:       false,
+      attributionControl: false,
+      logoPosition:     'bottom-right',
     });
-    ro.observe(canvas);
-    canvas.width  = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    return () => ro.disconnect();
-  }, []);
 
-  // Animation loop — runs once, reads from refs
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    mapRef.current = map;
 
-    const draw = () => {
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { rafRef.current = requestAnimationFrame(draw); return; }
+    map.on('load', () => {
+      loadedRef.current = true;
+      setupLayers(map);
 
-      const w = canvas.width;
-      const h = canvas.height;
-      if (w === 0 || h === 0) { rafRef.current = requestAnimationFrame(draw); return; }
+      // Push current arc data immediately (might have arrived before map loaded)
+      setData(map, 'threat-arcs',    arcFC(arcsRef.current, rawArcsRef.current));
+      setData(map, 'threat-origins', originFC(arcsRef.current));
 
-      const proj = geoNaturalEarth1()
-        .scale(w / 6.3)
-        .translate([w / 2, h / 2]);
-      const pathGen = geoPath(proj, ctx);
+      const animate = () => {
+        const frame = frameRef.current;
 
-      // ── background ────────────────────────────────────────────────────────
-      ctx.fillStyle = '#06101e';
-      ctx.fillRect(0, 0, w, h);
-
-      // ── graticule (faint cyan grid) ───────────────────────────────────────
-      ctx.beginPath();
-      pathGen(GRATICULE);
-      ctx.strokeStyle = 'rgba(0,200,224,0.05)';
-      ctx.lineWidth = 0.4;
-      ctx.stroke();
-
-      // ── land ──────────────────────────────────────────────────────────────
-      ctx.beginPath();
-      pathGen(LAND);
-      ctx.fillStyle = '#0c1c30';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(0,200,224,0.22)';
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-
-      // ── arcs + particles ──────────────────────────────────────────────────
-      const frame = frameRef.current;
-
-      for (const arc of arcsRef.current) {
-        const [r, g, b] = arc.rgb;
-
-        // Faint full arc path
-        ctx.beginPath();
-        let first = true;
-        for (let i = 0; i <= 80; i++) {
-          const pt = proj(arc.interp(i / 80));
-          if (!pt) continue;
-          if (first) { ctx.moveTo(pt[0], pt[1]); first = false; }
-          else ctx.lineTo(pt[0], pt[1]);
+        // Advance particles and push updated positions to Mapbox
+        for (const arc of arcsRef.current) {
+          for (const p of arc.particles) p.t = (p.t + p.speed) % 1;
         }
-        ctx.strokeStyle = `rgba(${r},${g},${b},0.18)`;
-        ctx.lineWidth = 0.8;
-        ctx.stroke();
+        setData(map, 'threat-particles', particleFC(arcsRef.current));
 
-        // Particles with glowing tails
-        for (const p of arc.particles) {
-          p.t = (p.t + p.speed) % 1;
+        // Pulse origin rings
+        const originR   = 3  + ((Math.sin(frame * 0.06) + 1) / 2) * 9;
+        const originAlp = 0.8 - ((Math.sin(frame * 0.06) + 1) / 2) * 0.65;
+        map.setPaintProperty('origin-pulse', 'circle-radius',         originR);
+        map.setPaintProperty('origin-pulse', 'circle-stroke-opacity', originAlp);
 
-          // Trail: 7 dots, newest brightest
-          for (let tail = 6; tail >= 0; tail--) {
-            const tSample = Math.max(0, p.t - tail * 0.018);
-            const pt = proj(arc.interp(tSample));
-            if (!pt) continue;
-            const alpha = (1 - tail / 7) * 0.95;
-            const radius = tail === 0 ? 2.8 : 2.8 - tail * 0.3;
-            if (tail === 0) {
-              ctx.shadowColor = `rgb(${r},${g},${b})`;
-              ctx.shadowBlur  = 10;
-            }
-            ctx.beginPath();
-            ctx.arc(pt[0], pt[1], Math.max(0.4, radius), 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
-            ctx.fill();
-            if (tail === 0) ctx.shadowBlur = 0;
-          }
-        }
-
-        // Pulsing origin ring
-        const srcPt = proj(arc.interp(0));
-        if (srcPt) {
-          const pulse = (Math.sin(frame * 0.06) + 1) / 2;
-          ctx.beginPath();
-          ctx.arc(srcPt[0], srcPt[1], 3 + pulse * 7, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(${r},${g},${b},${0.7 - pulse * 0.6})`;
-          ctx.lineWidth = 1.2;
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(srcPt[0], srcPt[1], 2.2, 0, Math.PI * 2);
-          ctx.fillStyle = `rgb(${r},${g},${b})`;
-          ctx.shadowColor = `rgb(${r},${g},${b})`;
-          ctx.shadowBlur  = 6;
-          ctx.fill();
-          ctx.shadowBlur = 0;
-        }
-      }
-
-      // ── home target (Sydney) ──────────────────────────────────────────────
-      const homePt = proj(HOME);
-      if (homePt) {
+        // Pulse home rings — counter-phase for continuous breathing effect
         const p1 = (Math.sin(frame * 0.045) + 1) / 2;
         const p2 = (Math.sin(frame * 0.045 + Math.PI) + 1) / 2;
+        map.setPaintProperty('home-pulse-1', 'circle-radius',         5 + p1 * 14);
+        map.setPaintProperty('home-pulse-1', 'circle-stroke-opacity', 0.55 - p1 * 0.50);
+        map.setPaintProperty('home-pulse-2', 'circle-radius',         5 + p2 * 14);
+        map.setPaintProperty('home-pulse-2', 'circle-stroke-opacity', 0.55 - p2 * 0.50);
 
-        // Two counter-phase rings for continuous pulse effect
-        for (const pulse of [p1, p2]) {
-          ctx.beginPath();
-          ctx.arc(homePt[0], homePt[1], 5 + pulse * 14, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(0,200,224,${0.55 - pulse * 0.5})`;
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-        }
-        // Static inner ring
-        ctx.beginPath();
-        ctx.arc(homePt[0], homePt[1], 5, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(0,200,224,0.8)';
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-        // Core dot
-        ctx.beginPath();
-        ctx.arc(homePt[0], homePt[1], 3, 0, Math.PI * 2);
-        ctx.fillStyle  = '#00c8e0';
-        ctx.shadowColor = '#00c8e0';
-        ctx.shadowBlur  = 12;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      }
+        frameRef.current  += 1;
+        rafRef.current     = requestAnimationFrame(animate);
+      };
 
-      frameRef.current += 1;
-      rafRef.current = requestAnimationFrame(draw);
+      rafRef.current = requestAnimationFrame(animate);
+    });
+
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      loadedRef.current  = false;
+      mapRef.current     = null;
+      map.remove();
     };
+  }, []); // stable — everything read from refs
 
-    rafRef.current = requestAnimationFrame(draw);
-    return () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); };
-  }, []); // stable — reads everything from refs
+  if (!TOKEN) {
+    return (
+      <div
+        className={`${className} w-full rounded-sm overflow-hidden bg-[#0f172a] flex items-center justify-center`}
+        aria-label="World threat map"
+      >
+        <p className="text-xs text-slate-600">Set VITE_MAPBOX_TOKEN to enable the threat map</p>
+      </div>
+    );
+  }
 
   return (
-    <div className={`${className} w-full rounded-sm overflow-hidden bg-[#06101e]`} aria-label="World threat map">
-      <canvas ref={canvasRef} className="w-full h-full" />
-    </div>
+    <div
+      ref={containerRef}
+      className={`${className} w-full rounded-sm overflow-hidden`}
+      aria-label="World threat map"
+    />
   );
 }

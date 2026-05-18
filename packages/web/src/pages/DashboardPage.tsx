@@ -127,6 +127,19 @@ function RiskDonut({ kpis }: { kpis: DashboardKpis }) {
   );
 }
 
+// ─── KpiTile ─────────────────────────────────────────────────────────────────
+
+interface KpiTileProps { label: string; value: string; accent: string }
+
+function KpiTile({ label, value, accent }: KpiTileProps) {
+  return (
+    <div className={`${P} flex flex-col gap-2`}>
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{label}</p>
+      <p className={`text-3xl font-bold tabular-nums leading-none ${accent}`}>{value}</p>
+    </div>
+  );
+}
+
 // ─── AttackBox ────────────────────────────────────────────────────────────────
 
 interface AttackBoxProps {
@@ -207,6 +220,35 @@ export default function DashboardPage() {
             hour: '2-digit', minute: '2-digit',
           })}
         </p>
+      </div>
+
+      {/* Row 0: KPI tiles */}
+      <div className="grid grid-cols-5 gap-3">
+        <KpiTile
+          label="Events / sec"
+          value={kpis?.eventsPerSecond.toLocaleString('en-AU', { maximumFractionDigits: 0 }) ?? '—'}
+          accent="text-navy-accent"
+        />
+        <KpiTile
+          label="Critical Open"
+          value={String(kpis?.openIncidentsBySeverity.critical ?? 0)}
+          accent="text-red-500"
+        />
+        <KpiTile
+          label="High Open"
+          value={String(kpis?.openIncidentsBySeverity.high ?? 0)}
+          accent="text-orange-500"
+        />
+        <KpiTile
+          label="Medium Open"
+          value={String(kpis?.openIncidentsBySeverity.medium ?? 0)}
+          accent="text-yellow-500"
+        />
+        <KpiTile
+          label="Total Open"
+          value={String(totalOpen)}
+          accent="text-white"
+        />
       </div>
 
       {/* Row 1: Risk Score | World Map | Top Internal Talkers */}

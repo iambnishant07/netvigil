@@ -1,6 +1,24 @@
+import { vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../test-utils.tsx';
 import DashboardPage from './DashboardPage.tsx';
+
+// Mapbox GL JS requires WebGL which jsdom doesn't provide — mock the module.
+// The component renders its container div (with aria-label) regardless.
+vi.mock('mapbox-gl', () => ({
+  default: {
+    accessToken: '',
+    Map: vi.fn().mockImplementation(() => ({
+      on:                vi.fn(),
+      remove:            vi.fn(),
+      addSource:         vi.fn(),
+      addLayer:          vi.fn(),
+      getSource:         vi.fn().mockReturnValue({ setData: vi.fn() }),
+      setPaintProperty:  vi.fn(),
+      setLayoutProperty: vi.fn(),
+    })),
+  },
+}));
 
 describe('DashboardPage', () => {
   it('shows loading spinner then renders Risk Monitor heading', async () => {
