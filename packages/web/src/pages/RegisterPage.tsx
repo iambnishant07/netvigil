@@ -34,10 +34,22 @@ const ROLES = [
   { value: 'developer',             label: 'Developer'             },
 ];
 
+const _PHONE_RE = /^[\d\s+\-().]{6,20}$/;
+
 const profileSchema = z.object({
-  fullName: z.string().optional(),
-  phone:    z.string().optional(),
-  dob:      z.string().optional(),
+  fullName: z.string().min(2, 'Full name must be at least 2 characters'),
+  phone: z.string().regex(_PHONE_RE, 'Enter a valid phone number (6–20 digits, spaces, +, -, ())'),
+  dob: z.string()
+    .min(1, 'Date of birth is required')
+    .refine((v) => {
+      const d = new Date(v);
+      return !isNaN(d.getTime());
+    }, 'Enter a valid date of birth')
+    .refine((v) => {
+      const ageMs = Date.now() - new Date(v).getTime();
+      const ageDays = ageMs / 86_400_000;
+      return ageDays >= 16 * 365;
+    }, 'You must be at least 16 years old'),
 });
 
 const createSchema = z.object({
@@ -98,18 +110,11 @@ export default function RegisterPage() {
     },
   });
 
-  function buildProfileFields(): Record<string, string> {
-    const fields: Record<string, string> = {};
-    if (fullName.trim()) fields.fullName = fullName.trim();
-    if (phone.trim())    fields.phone    = phone.trim();
-    if (dob)             fields.dob      = dob;
-    return fields;
-  }
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const profile = { fullName: fullName.trim(), phone: phone.trim(), dob };
     if (mode === 'create') {
-      const result = createSchema.safeParse({ mode, organizationName: orgName, email, password, timezone, fullName, phone, dob });
+      const result = createSchema.safeParse({ mode, organizationName: orgName, email, password, timezone, ...profile });
       if (!result.success) {
         const fe: FormErrors = {};
         for (const issue of result.error.issues) fe[String(issue.path[0])] = issue.message;
@@ -117,9 +122,9 @@ export default function RegisterPage() {
         return;
       }
       setErrors({});
-      mutation.mutate({ organizationName: orgName, email, password, timezone, ...buildProfileFields() });
+      mutation.mutate({ organizationName: orgName, email, password, timezone, ...profile });
     } else {
-      const result = joinSchema.safeParse({ mode, organizationId: orgId, email, password, role, fullName, phone, dob });
+      const result = joinSchema.safeParse({ mode, organizationId: orgId, email, password, role, ...profile });
       if (!result.success) {
         const fe: FormErrors = {};
         for (const issue of result.error.issues) fe[String(issue.path[0])] = issue.message;
@@ -127,7 +132,7 @@ export default function RegisterPage() {
         return;
       }
       setErrors({});
-      mutation.mutate({ organizationId: orgId, email, password, role, ...buildProfileFields() });
+      mutation.mutate({ organizationId: orgId, email, password, role, ...profile });
     }
   }
 
@@ -233,7 +238,7 @@ export default function RegisterPage() {
             {/* Profile details */}
             <div className="border-t border-slate-700 pt-4">
               <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-                Profile details <span className="normal-case font-normal">(optional)</span>
+                Profile details
               </p>
               <div className="space-y-4">
                 <Input

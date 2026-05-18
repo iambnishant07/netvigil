@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date as _date
+
 import asyncpg
 
 from aankhanet_api.security import uuid7
@@ -51,12 +53,13 @@ async def create_user(
     dob: str | None = None,
 ) -> dict:  # type: ignore[type-arg]
     user_id = str(uuid7())
+    dob_date = _date.fromisoformat(dob) if dob else None
     row = await conn.fetchrow(
         """INSERT INTO users(id, organization_id, email, password_hash, role, status,
                              full_name, phone, dob)
-           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::date) RETURNING *""",
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *""",
         user_id, org_id, email, password_hash, role, status,
-        full_name, phone, dob,
+        full_name, phone, dob_date,
     )
     return dict(row)  # type: ignore[arg-type]
 

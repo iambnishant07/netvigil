@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import re
+from datetime import date as _date
+
 from pydantic import EmailStr, field_validator, model_validator
 
 from aankhanet_api.schemas.base import CamelModel
@@ -20,9 +23,9 @@ class RegisterRequest(CamelModel):
     password: str
     role: str = "analyst"
     timezone: str = "Australia/Brisbane"
-    full_name: str | None = None
-    phone: str | None = None
-    dob: str | None = None
+    full_name: str
+    phone: str
+    dob: str  # YYYY-MM-DD
 
     @model_validator(mode="after")
     def org_xor(self) -> RegisterRequest:
@@ -48,6 +51,37 @@ class RegisterRequest(CamelModel):
     def role_valid(cls, v: str) -> str:
         if v not in REGISTERABLE_ROLES:
             raise ValueError(f"Invalid role: {v}")
+        return v
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_valid(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 2:
+            raise ValueError("Full name must be at least 2 characters")
+        return v
+
+    @field_validator("phone")
+    @classmethod
+    def phone_valid(cls, v: str) -> str:
+        v = v.strip()
+        if not re.match(r"^[\d\s\+\-\(\)\.]{6,20}$", v):
+            raise ValueError("Enter a valid phone number (6–20 digits, spaces, +, -, ())")
+        return v
+
+    @field_validator("dob")
+    @classmethod
+    def dob_valid(cls, v: str) -> str:
+        try:
+            d = _date.fromisoformat(v)
+        except ValueError:
+            raise ValueError("Enter a valid date of birth (YYYY-MM-DD)")
+        today = _date.today()
+        age_days = (today - d).days
+        if age_days < 16 * 365:
+            raise ValueError("You must be at least 16 years old")
+        if age_days > 120 * 365:
+            raise ValueError("Enter a valid date of birth")
         return v
 
 
