@@ -18,8 +18,11 @@ export interface ThreatMapData {
   arcs: ThreatArc[];
 }
 
+interface FlyToTarget { lat: number; lng: number; zoom: number }
+
 interface Props {
-  threatMap: ThreatMapData | undefined;
+  threatMap:  ThreatMapData | undefined;
+  flyTo?:     FlyToTarget | null;
   className?: string;
 }
 
@@ -245,7 +248,7 @@ function setData(map: mapboxgl.Map, id: string, data: GeoFC): void {
 
 // ─── component ────────────────────────────────────────────────────────────────
 
-export function ThreatMap({ threatMap, className = 'h-80' }: Props) {
+export function ThreatMap({ threatMap, flyTo, className = 'h-80' }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef       = useRef<mapboxgl.Map | null>(null);
   const rafRef       = useRef<number | null>(null);
@@ -253,6 +256,17 @@ export function ThreatMap({ threatMap, className = 'h-80' }: Props) {
   const arcsRef      = useRef<AnimArc[]>([]);
   const rawArcsRef   = useRef<ThreatArc[]>([]);
   const loadedRef    = useRef(false);
+
+  // Fly to a target location when requested
+  useEffect(() => {
+    if (!flyTo || !mapRef.current || !loadedRef.current) return;
+    mapRef.current.flyTo({
+      center:    [flyTo.lng, flyTo.lat],
+      zoom:       flyTo.zoom,
+      duration:   1500,
+      essential:  true,
+    });
+  }, [flyTo]);
 
   // Keep animation arc state in sync with incoming prop
   useEffect(() => {

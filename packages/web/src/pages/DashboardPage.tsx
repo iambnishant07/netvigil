@@ -1,6 +1,6 @@
 import './DashboardPage.css';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { useIncidentStream } from '../hooks/use-incident-stream.ts';
@@ -178,9 +178,13 @@ function countryName(code: string): string {
   catch { return code; }
 }
 
-interface GeoCardProps { anchor: GeoCardAnchor; onClose: () => void }
+interface GeoCardProps {
+  anchor: GeoCardAnchor;
+  onClose: () => void;
+  onGeoResolved: (lat: number, lng: number) => void;
+}
 
-function GeoCard({ anchor, onClose }: GeoCardProps) {
+function GeoCard({ anchor, onClose, onGeoResolved }: GeoCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading } = useQuery({
@@ -188,6 +192,11 @@ function GeoCard({ anchor, onClose }: GeoCardProps) {
     queryFn:  () => apiClient.get<GeoInfo>(`/geo/${anchor.ip}`),
     staleTime: Infinity,
   });
+
+  // Fly the map to this IP's location as soon as we have coords
+  useEffect(() => {
+    if (data?.found) onGeoResolved(data.lat, data.lng);
+  }, [data, onGeoResolved]);
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -254,7 +263,17 @@ function GeoCard({ anchor, onClose }: GeoCardProps) {
 
 export default function DashboardPage() {
   useIncidentStream();
-  const [geoCard, setGeoCard] = useState<GeoCardAnchor | null>(null);
+  const [geoCard,      setGeoCard]      = useState<GeoCardAnchor | null>(null);
+  const [flyToCoords,  setFlyToCoords]  = useState<{ lat: number; lng: number; zoom: number } | null>(null);
+
+  const handleGeoResolved = useCallback((lat: number, lng: number) => {
+    setFlyToCoords({ lat, lng, zoom: 3 });
+  }, []);
+
+  const handleGeoClose = useCallback(() => {
+    setGeoCard(null);
+    setFlyToCoords({ lat: 10, lng: 20, zoom: 0.9 }); // return to world view
+  }, []);
 
   const { data: kpis, isLoading: kpisLoading } = useQuery({
     queryKey: qk.dashboard.kpis(),
@@ -373,7 +392,7 @@ export default function DashboardPage() {
 
           <div className="flex gap-3 h-80">
             {/* Canvas map */}
-            <ThreatMap threatMap={threatMap} className="flex-1 min-w-0 h-full" />
+            <ThreatMap threatMap={threatMap} flyTo={flyToCoords} className="flex-1 min-w-0 h-full" />
 
             {/* Scrollable live attack feed */}
             <div className="w-60 flex flex-col border-l border-navy-border pl-3 min-h-0">
@@ -591,7 +610,13 @@ export default function DashboardPage() {
         </table>
       </div>
 
-      {geoCard && <GeoCard anchor={geoCard} onClose={() => setGeoCard(null)} />}
+      {geoCard && (
+        <GeoCard
+          anchor={geoCard}
+          onClose={handleGeoClose}
+          onGeoResolved={handleGeoResolved}
+        />
+      )}
     </div>
   );
 }
