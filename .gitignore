@@ -19,6 +19,9 @@ packages/mobile/.env.local
 packages/mobile/google-services.json
 packages/mobile/firebase-service-account.json
 
+# MaxMind GeoLite2 databases — download separately, never commit
+*.mmdb
+
 # Python
 __pycache__/
 *.pyc
