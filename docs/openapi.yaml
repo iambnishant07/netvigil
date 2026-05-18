@@ -38,6 +38,8 @@ tags:
     description: Organisation, user, and role management
   - name: health
     description: Liveness and readiness probes
+  - name: seed
+    description: Demo data management
 
 paths:
 
@@ -136,6 +138,171 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/User' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [auth]
+      summary: Update own profile (fullName, phone, address, dob)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProfileRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/me/push-token:
+    put:
+      tags: [auth]
+      summary: Register Expo push notification token
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pushToken]
+              properties:
+                pushToken: { type: string }
+      responses:
+        '204': { description: Registered }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/mfa/setup:
+    post:
+      tags: [auth]
+      summary: Generate TOTP secret and return provisioning URI for QR code
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MfaSetupResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/mfa/verify:
+    post:
+      tags: [auth]
+      summary: Verify TOTP code to complete MFA enrollment (sets mfaEnrolled=true)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        '204': { description: Enrolled }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/mfa/disable:
+    post:
+      tags: [auth]
+      summary: Disable TOTP MFA (requires valid code)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        '204': { description: Disabled }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/mfa/challenge:
+    post:
+      tags: [auth]
+      summary: Complete MFA login after password is validated
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MfaChallengeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/google:
+    post:
+      tags: [auth]
+      summary: Web Google sign-in (validates id_token from GIS button)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idToken]
+              properties:
+                idToken: { type: string }
+      responses:
+        '200':
+          description: OK — may include needsOrgSelection and googleSessionToken for new users
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+
+  /auth/google/complete:
+    post:
+      tags: [auth]
+      summary: Finalise new Google user — select org and role
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GoogleCompleteRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /auth/google/mobile:
+    get:
+      tags: [auth]
+      summary: Initiate mobile OAuth (redirects to Google consent screen)
+      security: []
+      responses:
+        '302':
+          description: Redirect to Google OAuth consent screen
+
+  /auth/google/mobile-callback:
+    get:
+      tags: [auth]
+      summary: OAuth callback — redirects to aankhanet:// deep link with tokens
+      security: []
+      responses:
+        '302':
+          description: Redirect to aankhanet:// deep link
 
   /auth/organizations:
     get:
@@ -346,6 +513,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: '#/components/parameters/OrgIdHeader'
       responses:
         '200':
           description: OK
@@ -355,6 +523,8 @@ paths:
     post:
       tags: [devices]
       summary: Register a new log source
+      parameters:
+        - $ref: '#/components/parameters/OrgIdHeader'
       requestBody:
         required: true
         content:
@@ -380,6 +550,7 @@ paths:
   /devices/{deviceId}:
     parameters:
       - $ref: '#/components/parameters/DeviceIdParam'
+      - $ref: '#/components/parameters/OrgIdHeader'
     get:
       tags: [devices]
       responses:
@@ -432,16 +603,40 @@ paths:
           schema: { type: string, format: date-time }
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: '#/components/parameters/OrgIdHeader'
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema: { $ref: '#/components/schemas/IncidentList' }
+    post:
+      tags: [incidents]
+      summary: Create a detected incident (used by the detector service)
+      parameters:
+        - $ref: '#/components/parameters/OrgIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IncidentCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Incident' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404':
+          description: Device not found in organisation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /incidents/{incidentId}:
     parameters:
       - $ref: '#/components/parameters/IncidentIdParam'
+      - $ref: '#/components/parameters/OrgIdHeader'
     get:
       tags: [incidents]
       responses:
@@ -453,19 +648,12 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
     patch:
       tags: [incidents]
-      summary: Update incident status (acknowledge, confirm, false positive)
+      summary: Acknowledge, confirm, mark false-positive; also update severity and narrative
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [status]
-              properties:
-                status: { $ref: '#/components/schemas/IncidentStatus' }
-                note:
-                  type: string
-                  maxLength: 1000
+            schema: { $ref: '#/components/schemas/IncidentPatch' }
       responses:
         '200':
           description: OK
@@ -492,6 +680,8 @@ paths:
     get:
       tags: [dashboard]
       summary: KPI tile data for the dashboard
+      parameters:
+        - $ref: '#/components/parameters/OrgIdHeader'
       responses:
         '200':
           description: OK
@@ -507,6 +697,7 @@ paths:
         - in: query
           name: hours
           schema: { type: integer, minimum: 1, maximum: 168, default: 24 }
+        - $ref: '#/components/parameters/OrgIdHeader'
       responses:
         '200':
           description: OK
@@ -522,10 +713,66 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/ThreatArc' }
 
+  /dashboard/trend:
+    get:
+      tags: [dashboard]
+      summary: 7-day incident count by severity (Australia/Sydney timezone)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgIdHeader'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TrendData' }
+
+  /dashboard/attack-types:
+    get:
+      tags: [dashboard]
+      summary: Incident count grouped into 7 attack categories
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgIdHeader'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttackTypes' }
+
+  # ─── Geo ─────────────────────────────────────────────────────────────────
+  /geo/{ip}:
+    get:
+      tags: [dashboard]
+      summary: Geolocate a single public IP (GeoLite2 first, ipinfo.io HTTPS fallback)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: ip
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeoResult' }
+        '400':
+          description: Private or invalid IP address
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   # ─── Alert rules (FR-07, FR-14) ──────────────────────────────────────────
   /alert-rules:
     get:
       tags: [alert-rules]
+      parameters:
+        - $ref: '#/components/parameters/OrgIdHeader'
       responses:
         '200':
           description: OK
@@ -536,6 +783,8 @@ paths:
                 items: { $ref: '#/components/schemas/AlertRule' }
     post:
       tags: [alert-rules]
+      parameters:
+        - $ref: '#/components/parameters/OrgIdHeader'
       requestBody:
         required: true
         content:
@@ -554,6 +803,7 @@ paths:
         name: ruleId
         required: true
         schema: { type: string, format: uuid }
+      - $ref: '#/components/parameters/OrgIdHeader'
     patch:
       tags: [alert-rules]
       requestBody:
@@ -571,6 +821,82 @@ paths:
       tags: [alert-rules]
       responses:
         '204': { description: Deleted }
+
+  # ─── Seed ────────────────────────────────────────────────────────────────
+  /seed:
+    post:
+      tags: [seed]
+      summary: Insert 20 demo incidents, 2 devices, 3 alert rules for current org (idempotent)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgIdHeader'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [seeded]
+                properties:
+                  seeded:
+                    type: object
+                    required: [devices, incidents, alert_rules]
+                    properties:
+                      devices: { type: integer }
+                      incidents: { type: integer }
+                      alert_rules: { type: integer }
+    delete:
+      tags: [seed]
+      summary: Clear all incidents, devices, alert rules for current org
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgIdHeader'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deleted]
+                properties:
+                  deleted:
+                    type: object
+                    required: [incidents, devices, alert_rules]
+                    properties:
+                      incidents: { type: integer }
+                      devices: { type: integer }
+                      alert_rules: { type: integer }
+
+  # ─── Audit log ───────────────────────────────────────────────────────────
+  /audit-log:
+    get:
+      tags: [admin]
+      summary: Paginated immutable audit trail for the org
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: '#/components/parameters/OrgIdHeader'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, page, pageSize, total]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/AuditLog' }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  total: { type: integer }
 
 components:
   securitySchemes:
@@ -597,6 +923,15 @@ components:
       in: path
       name: incidentId
       required: true
+      schema: { type: string, format: uuid }
+    OrgIdHeader:
+      in: header
+      name: X-Org-Id
+      description: |
+        Optional. When supplied by a super_admin, routes all data operations to the
+        specified organisation instead of the caller's own org. Ignored for all
+        other roles.
+      required: false
       schema: { type: string, format: uuid }
 
   responses:
@@ -636,7 +971,7 @@ components:
     # ─── Auth ────────────────────────────────────────────────────────────
     RegisterRequest:
       type: object
-      required: [email, password]
+      required: [email, password, fullName, phone, dob]
       description: |
         Exactly one of organizationName (create new org) or organizationId (join existing) must be set.
         Creating a new org → role is forced to admin, status active.
@@ -653,6 +988,18 @@ components:
           nullable: true
         email: { type: string, format: email }
         password: { type: string, minLength: 12 }
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: "Stripped before storage. Min 2 chars."
+        phone:
+          type: string
+          description: "6–20 chars, digits/spaces/+/-()/. only"
+        dob:
+          type: string
+          format: date
+          description: "ISO date YYYY-MM-DD. Must be >= 16 years old."
         role:
           $ref: '#/components/schemas/UserRole'
         timezone: { type: string, example: Australia/Brisbane }
@@ -722,6 +1069,13 @@ components:
         status: { $ref: '#/components/schemas/UserStatus' }
         mfaEnrolled: { type: boolean }
         createdAt: { type: string, format: date-time }
+        organizationName: { type: string, nullable: true }
+        fullName: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        dob: { type: string, format: date, nullable: true }
+        hasGoogleAuth: { type: boolean, default: false }
+        hasPasswordAuth: { type: boolean, default: true }
 
     OrgUser:
       type: object
@@ -758,6 +1112,49 @@ components:
         status: { $ref: '#/components/schemas/UserStatus' }
         mfaEnrolled: { type: boolean }
         createdAt: { type: string, format: date-time }
+
+    UpdateProfileRequest:
+      type: object
+      description: At least one field must be set. All fields are optional; passing null clears the field.
+      properties:
+        fullName: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        dob:
+          type: string
+          format: date
+          nullable: true
+          description: "ISO date YYYY-MM-DD"
+
+    MfaSetupResponse:
+      type: object
+      required: [provisioningUri]
+      properties:
+        provisioningUri:
+          type: string
+          description: "otpauth:// URI for QR code generation"
+
+    MfaChallengeRequest:
+      type: object
+      required: [mfaToken, code]
+      properties:
+        mfaToken:
+          type: string
+          description: "Short-lived token returned by /auth/login when mfaRequired is true"
+        code:
+          type: string
+          description: "6-digit TOTP code"
+
+    GoogleCompleteRequest:
+      type: object
+      required: [googleSessionToken]
+      description: Complete Google sign-in for a new user — select org and role.
+      properties:
+        googleSessionToken: { type: string }
+        organizationName: { type: string, nullable: true }
+        organizationId: { type: string, format: uuid, nullable: true }
+        role: { $ref: '#/components/schemas/UserRole' }
+        timezone: { type: string, example: Australia/Brisbane }
 
     # ─── Devices ─────────────────────────────────────────────────────────
     DeviceVendor:
@@ -901,6 +1298,35 @@ components:
           enum: [created, updated]
         incident: { $ref: '#/components/schemas/Incident' }
 
+    IncidentCreate:
+      type: object
+      required: [deviceId, severity, attackLabel, mitreTechnique, sourceIp, destinationIp, anomalyScore]
+      properties:
+        deviceId: { type: string, format: uuid }
+        severity: { $ref: '#/components/schemas/Severity' }
+        attackLabel: { type: string }
+        mitreTechnique:
+          type: string
+          pattern: '^T[0-9]{4}(\.[0-9]{3})?$'
+        sourceIp: { type: string }
+        destinationIp: { type: string }
+        anomalyScore:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        narrative: { type: string, nullable: true }
+        detectedAt: { type: string, format: date-time, nullable: true }
+
+    IncidentPatch:
+      type: object
+      description: |
+        Acknowledge, confirm, or mark false-positive. Updating severity or narrative requires incidents:write permission.
+      properties:
+        status: { $ref: '#/components/schemas/IncidentStatus' }
+        severity: { $ref: '#/components/schemas/Severity' }
+        narrative: { type: string, maxLength: 1200, nullable: true }
+
     # ─── Dashboard ───────────────────────────────────────────────────────
     DashboardKpis:
       type: object
@@ -959,6 +1385,63 @@ components:
           type: string
           minLength: 2
           maxLength: 2
+
+    TrendDay:
+      type: object
+      required: [date, critical, high, medium, low, info]
+      properties:
+        date: { type: string, format: date }
+        critical: { type: integer }
+        high: { type: integer }
+        medium: { type: integer }
+        low: { type: integer }
+        info: { type: integer }
+
+    TrendData:
+      type: object
+      required: [days]
+      properties:
+        days:
+          type: array
+          maxItems: 7
+          items: { $ref: '#/components/schemas/TrendDay' }
+
+    AttackTypes:
+      type: object
+      required: [c2Beaconing, bruteForce, ddos, portScan, dataExfil, lateralMovement, unknownAnomaly]
+      properties:
+        c2Beaconing: { type: integer }
+        bruteForce: { type: integer }
+        ddos: { type: integer }
+        portScan: { type: integer }
+        dataExfil: { type: integer }
+        lateralMovement: { type: integer }
+        unknownAnomaly: { type: integer }
+
+    GeoResult:
+      type: object
+      required: [ip, lat, lng, country, city, source]
+      properties:
+        ip: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+        country: { type: string, minLength: 2, maxLength: 2 }
+        city: { type: string }
+        source: { type: string, enum: [geoip2, ipinfo, private, unknown] }
+
+    AuditLog:
+      type: object
+      required: [id, userId, action, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        userEmail: { type: string, nullable: true }
+        action: { type: string }
+        detail:
+          type: object
+          additionalProperties: true
+          nullable: true
+        createdAt: { type: string, format: date-time }
 
     # ─── Alert rules ─────────────────────────────────────────────────────
     AlertChannel:

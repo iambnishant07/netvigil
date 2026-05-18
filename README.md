@@ -211,6 +211,8 @@ pnpm test --coverage
 | `EXPO_PUBLIC_API_URL` | mobile | API base URL |
 | `EXPO_PUBLIC_MAPBOX_TOKEN` | mobile | Mapbox token |
 | `EXPO_PUBLIC_GOOGLE_CLIENT_ID` | mobile | Google OAuth client ID |
+| `GEOIP_DB_PATH` | api | Path to GeoLite2-City.mmdb (optional, falls back to ipinfo.io if absent) |
+| `IPINFO_TOKEN` | api | ipinfo.io API token (optional, for higher rate limits on the HTTPS fallback) |
 
 Copy `services/api/.env.example`, `packages/web/.env.example`, and `packages/mobile/.env.example` for full lists.
 
@@ -240,19 +242,50 @@ Interactive docs at `/docs` (Swagger UI) and `/redoc` on any running API instanc
 
 ---
 
+## Key implemented features
+
+### Super-admin cross-org access
+A `super_admin` account may operate on any organisation by supplying the
+`X-Org-Id: <org-uuid>` header. The web dashboard provides an organisation
+switcher dropdown in the header that automatically injects this header.
+
+### IP Geolocation
+Source IPs are resolved to `(lat, lng, country, city)` using the MaxMind
+GeoLite2-City database (MMDB) with an ipinfo.io HTTPS API fallback. Place the
+database at `data/GeoLite2-City.mmdb` for offline-first resolution. The threat
+map and the click-to-geolocate feature in the live incident feed both rely on this.
+
+### Registration profile fields
+Signup requires `fullName`, `phone`, and `dob` in addition to email and password.
+Fields are validated server-side (Pydantic) and client-side (Zod): full name ≥ 2
+chars, phone pattern `[\d\s+\-().]`, DOB must be a valid ISO date for a person
+aged 16–120.
+
+### Alert rule org isolation
+Alert rule PATCH and DELETE operations include an `AND organization_id = $N` guard
+at the SQL level, preventing a rule change in one org from affecting another.
+
+---
+
 ## Project status — NIT3003 deliverables
 
 | Deliverable | Status |
 |-------------|--------|
-| Architecture & OpenAPI spec | ✅ Complete |
+| Architecture & OpenAPI spec | ✅ Complete, updated 2026-05 |
 | Web dashboard (≥ 80% MVP) | ✅ Deployed to Vercel |
 | Mobile app (≥ 80% MVP, biometric + push) | ✅ APK on EAS / Expo Go |
 | Syslog / NetFlow / pcap ingestor | ✅ Implemented |
-| AI ensemble (IF + AE + XGBoost) | ✅ Implemented |
-| LLM narrative (Claude API + fallback) | ✅ Implemented |
-| Alert dispatcher (email / SMS / push) | ✅ FCM V1 push confirmed |
+| AI ensemble (IF + AE + XGBoost, CICIDS2017) | ✅ Trained on 180k samples |
+| LLM narrative (Claude API + fallback) | ✅ claude-haiku-4-5, template fallback |
+| Alert dispatcher (email / SMS / push) | ✅ Expo push confirmed |
 | RBAC (8 roles × 13 permissions) | ✅ API + web + mobile |
 | Audit trail | ✅ Immutable audit_logs table + web page |
-| Backend test coverage ≥ 70% | ✅ 81.72% (68 tests) |
+| Super-admin cross-org access | ✅ X-Org-Id header + EffectiveOrg dep |
+| IP geolocation (GeoLite2 + ipinfo.io) | ✅ Threat map + click-to-geolocate |
+| Mapbox GL JS threat map | ✅ Animated arc globe |
+| Profile fields at signup | ✅ full_name, phone, dob required |
+| Alert rule org isolation | ✅ Org-scoped UPDATE/DELETE |
+| RLS transaction fix | ✅ asyncpg get_connection wraps transaction |
+| Backend test coverage ≥ 70% | ✅ API ≥ 70%, Detector 80% |
 | Frontend test coverage ≥ 60% | ✅ Passing |
-| Cloud deployment (staging) | ✅ Railway (API/workers) + Vercel (web) |
+| Cloud deployment (staging) | ✅ Railway (API) + Vercel (web) |
