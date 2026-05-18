@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query
 
 from aankhanet_api import database as db
 from aankhanet_api.deps import require_permission
+from aankhanet_api.geo import batch_lookup, country_for_sync, is_private
 from aankhanet_api.repositories import incidents as inc_repo
 from aankhanet_api.schemas.dashboard import (
     AttackTypes,
@@ -25,54 +26,6 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 _ReadDashboard = Annotated[dict[str, Any], require_permission("dashboard:read")]
 
-# ─── IP geo lookup ────────────────────────────────────────────────────────────
-# Keyed on first two octets → (lat, lng, country).
-# Covers the ranges that appear in seed data and common attacker blocks.
-_IP_GEO: dict[str, tuple[float, float, str]] = {
-    "185.220": (50.1,   8.7,   "DE"),  # Tor exits — Frankfurt
-    "185.156": (55.7,  37.6,   "RU"),
-    "103.74":  (22.3,  114.2,  "HK"),
-    "222.186": (30.6,  114.3,  "CN"),
-    "101.33":  (39.9,  116.4,  "CN"),
-    "125.124": (31.2,  121.5,  "CN"),
-    "58.218":  (32.0,  118.8,  "CN"),
-    "194.165": (50.1,   14.4,  "CZ"),
-    "45.33":   (37.8, -122.4,  "US"),
-    "104.21":  (37.4, -122.1,  "US"),
-    "2.56":    (52.3,    4.9,  "NL"),
-    "91.108":  (52.3,    4.9,  "NL"),
-    "92.242":  (55.7,   37.6,  "RU"),
-    "45.142":  (48.2,   16.4,  "AT"),
-    "197.210": ( 9.1,    7.5,  "NG"),
-    "1.179":   (-33.9,  151.2, "AU"),
-    "203.206": (-37.8,  145.0, "AU"),
-    # IANA documentation ranges — used in seed data; map to plausible locations
-    "198.51":  (35.7,  139.7,  "JP"),
-    "203.0":   ( 1.4,  103.8,  "SG"),
-}
-
-# RFC-1918 prefixes — used to classify IPs as internal/external
-_RFC1918_PREFIXES = (
-    "10.", "192.168.",
-    "172.16.", "172.17.", "172.18.", "172.19.", "172.20.",
-    "172.21.", "172.22.", "172.23.", "172.24.", "172.25.",
-    "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.",
-)
-
-
-def _is_private(ip: str) -> bool:
-    return any(ip.startswith(p) for p in _RFC1918_PREFIXES)
-
-
-def _ip_to_geo(ip: str) -> tuple[float, float, str] | None:
-    prefix = ".".join(ip.split(".")[:2])
-    return _IP_GEO.get(prefix)
-
-
-def _country_for(ip: str) -> str:
-    geo = _ip_to_geo(ip)
-    return geo[2] if geo else "??"
-
 
 # ─── /kpis ───────────────────────────────────────────────────────────────────
 
@@ -83,8 +36,8 @@ async def get_kpis(current_user: _ReadDashboard) -> DashboardKpis:
 
         sev_counts = await inc_repo.get_kpis(conn, current_user["org"])
 
-        # Top internal talkers: internal source IPs by incident count.
-        # anomaly_score * 5 GB used as a traffic-volume proxy (no netflow table).
+        # Top internal talkers — internal source IPs by incident count.
+        # anomaly_score × 500 MB used as a traffic-volume proxy (no netflow table).
         internal_rows = await conn.fetch(
             """
             SELECT source_ip,
@@ -99,7 +52,7 @@ async def get_kpis(current_user: _ReadDashboard) -> DashboardKpis:
                 source_ip LIKE '172.18.%%'   OR source_ip LIKE '172.19.%%' OR
                 source_ip LIKE '172.20.%%'   OR source_ip LIKE '172.21.%%' OR
                 source_ip LIKE '172.22.%%'   OR source_ip LIKE '172.23.%%' OR
-                source_ip LIKE '172.24.%%'   OR source_ip LIKE '172.25.%%' OR
+                source_ip LIKE '172.24.%%'   OR source_ip LIKE '172.24.%%' OR
                 source_ip LIKE '172.26.%%'   OR source_ip LIKE '172.27.%%' OR
                 source_ip LIKE '172.28.%%'   OR source_ip LIKE '172.29.%%' OR
                 source_ip LIKE '172.30.%%'   OR source_ip LIKE '172.31.%%'
@@ -111,7 +64,7 @@ async def get_kpis(current_user: _ReadDashboard) -> DashboardKpis:
             current_user["org"],
         )
 
-        # Top external destinations: non-RFC-1918 destination IPs by incident count.
+        # Top external destinations — non-RFC-1918 destination IPs.
         external_rows = await conn.fetch(
             """
             SELECT destination_ip,
@@ -144,6 +97,10 @@ async def get_kpis(current_user: _ReadDashboard) -> DashboardKpis:
             current_user["org"],
         )
 
+    # Geolocate all external destination IPs concurrently for country codes
+    dest_ips = [r["destination_ip"] for r in external_rows]
+    geo_map = await batch_lookup(dest_ips)
+
     return DashboardKpis(
         events_per_second=0.0,
         open_incidents_by_severity=SeverityCount(**sev_counts),
@@ -154,7 +111,9 @@ async def get_kpis(current_user: _ReadDashboard) -> DashboardKpis:
         top_external_destinations=[
             IpBytesCountry(
                 ip=r["destination_ip"],
-                country=_country_for(r["destination_ip"]),
+                country=(geo_map[r["destination_ip"]].country
+                         if r["destination_ip"] in geo_map
+                         else country_for_sync(r["destination_ip"])),
                 bytes=r["est_bytes"],
             )
             for r in external_rows
@@ -179,42 +138,43 @@ async def get_threat_map(
             FROM incidents i
             JOIN devices d ON d.id = i.device_id
             WHERE i.detected_at > now() - ($1 || ' hours')::interval
-              AND i.source_ip NOT LIKE '10.%%'
-              AND i.source_ip NOT LIKE '192.168.%%'
-              AND i.source_ip NOT LIKE '172.16.%%'
-              AND i.source_ip NOT LIKE '172.17.%%'
-              AND i.source_ip NOT LIKE '172.18.%%'
-              AND i.source_ip NOT LIKE '172.19.%%'
-              AND i.source_ip NOT LIKE '172.20.%%'
-              AND i.source_ip NOT LIKE '172.21.%%'
-              AND i.source_ip NOT LIKE '172.22.%%'
-              AND i.source_ip NOT LIKE '172.23.%%'
-              AND i.source_ip NOT LIKE '172.24.%%'
-              AND i.source_ip NOT LIKE '172.25.%%'
-              AND i.source_ip NOT LIKE '172.26.%%'
-              AND i.source_ip NOT LIKE '172.27.%%'
-              AND i.source_ip NOT LIKE '172.28.%%'
-              AND i.source_ip NOT LIKE '172.29.%%'
-              AND i.source_ip NOT LIKE '172.30.%%'
-              AND i.source_ip NOT LIKE '172.31.%%'
+              AND NOT (
+                i.source_ip LIKE '10.%%'       OR
+                i.source_ip LIKE '192.168.%%'  OR
+                i.source_ip LIKE '172.16.%%'   OR i.source_ip LIKE '172.17.%%' OR
+                i.source_ip LIKE '172.18.%%'   OR i.source_ip LIKE '172.19.%%' OR
+                i.source_ip LIKE '172.20.%%'   OR i.source_ip LIKE '172.21.%%' OR
+                i.source_ip LIKE '172.22.%%'   OR i.source_ip LIKE '172.23.%%' OR
+                i.source_ip LIKE '172.24.%%'   OR i.source_ip LIKE '172.25.%%' OR
+                i.source_ip LIKE '172.26.%%'   OR i.source_ip LIKE '172.27.%%' OR
+                i.source_ip LIKE '172.28.%%'   OR i.source_ip LIKE '172.29.%%' OR
+                i.source_ip LIKE '172.30.%%'   OR i.source_ip LIKE '172.31.%%'
+              )
             ORDER BY i.detected_at DESC
             LIMIT 200
             """,
             str(hours),
         )
 
+    # Geolocate all unique source IPs in one concurrent batch
+    # — GeoLite2 DB used first (if present), then ipinfo.io HTTPS API for misses
+    source_ips = [row["source_ip"] for row in rows]
+    geo_map = await batch_lookup(source_ips)
+
+    # Aggregate into arcs keyed by (source_coords, target_coords)
     arc_map: dict[tuple[str, float, float], dict[str, Any]] = {}
     for row in rows:
-        geo = _ip_to_geo(row["source_ip"])
+        geo = geo_map.get(row["source_ip"])
         if not geo:
             continue
-        src_lat, src_lng, country = geo
-        key = (f"{src_lat},{src_lng}", float(row["lat"]), float(row["lng"]))
+        key = (f"{geo.lat},{geo.lng}", float(row["lat"]), float(row["lng"]))
         if key not in arc_map:
             arc_map[key] = {
-                "from_lat": src_lat, "from_lng": src_lng,
-                "to_lat": float(row["lat"]), "to_lng": float(row["lng"]),
-                "count": 0, "severity": row["severity"], "country": country,
+                "from_lat": geo.lat,  "from_lng": geo.lng,
+                "to_lat":   float(row["lat"]), "to_lng": float(row["lng"]),
+                "count":    0,
+                "severity": row["severity"],
+                "country":  geo.country,
             }
         arc_map[key]["count"] += 1
         sev_order = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
@@ -224,7 +184,7 @@ async def get_threat_map(
     arcs = [
         ThreatArc(
             from_=GeoPoint(lat=a["from_lat"], lng=a["from_lng"]),
-            to=GeoPoint(lat=a["to_lat"], lng=a["to_lng"]),
+            to=GeoPoint(lat=a["to_lat"],   lng=a["to_lng"]),
             count=a["count"],
             severity=a["severity"],
             source_country=a["country"],
@@ -302,7 +262,7 @@ _ATTACK_LABEL_MAP: list[tuple[str, str]] = [
     ("infiltration", "data_exfil"),
     ("lateral",      "lateral_movement"),
     ("pivot",        "lateral_movement"),
-    ("web_attack",   "port_scan"),    # SQL/XSS: closest bucket
+    ("web_attack",   "port_scan"),
 ]
 
 
